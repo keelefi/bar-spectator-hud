@@ -156,8 +156,10 @@ end
 local function formatRes(number)
     if number < 1000 then
         return string.format("%d", number)
+    elseif number < 100000 then
+        return string.format("%d %03d", number / 1000, number % 1000)
     else
-        return string.format("%.1fk", number / 1000)
+        return string.format("%.1fM", number / 1000000)
     end
 end
 
@@ -180,6 +182,10 @@ local function getAmountOfTeams()
     return amountOfTeams
 end
 
+local function getAmountOfMetrics()
+    return #metricsAvailable
+end
+
 local function getMetricChosen()
     for _, currentMetric in pairs(metricsAvailable) do
         if metricChosenID == currentMetric.id then
@@ -188,8 +194,15 @@ local function getMetricChosen()
     end
 end
 
-local function getAmountOfMetrics()
-    return #metricsAvailable
+local function setMetricChosen(metricID)
+    if metricID < 1 or metricID > getAmountOfMetrics() then
+        return
+    end
+
+    metricChosenID = metricID
+
+    local metricChosen = getMetricChosen()
+    headerLabel = metricChosen.title
 end
 
 local function sortStats()
@@ -257,11 +270,6 @@ local function updateStatsMetalIncome()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalIncome
-                --Spring.Echo(string.format("metalIncome: %d", metalIncome))
-                --[[
-                Spring.Echo(string.format("color: {%d, %d, %d, %d}",
-                    teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha))
-                ]]
             end
         end
     end
@@ -277,7 +285,10 @@ local function updateStatsMetalProduced()
                 local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
                 local historyMax = Spring.GetTeamStatsHistory(teamID)
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local metalProduced = statsHistory[1].metalProduced
+                local metalProduced = 0
+                if statsHistory and #statsHistory > 0 then
+                    metalProduced = statsHistory[1].metalProduced
+                end
                 teamStats[allyID][teamID] = {}
                 teamStats[allyID][teamID].colorRed = teamColorRed
                 teamStats[allyID][teamID].colorGreen = teamColorGreen
@@ -356,7 +367,10 @@ local function updateStatsDamageDone()
                 local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
                 local historyMax = Spring.GetTeamStatsHistory(teamID)
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageDealt = statsHistory[1].damageDealt
+                local damageDealt = 0
+                if statsHistory and #statsHistory > 0 then
+                    damageDealt = statsHistory[1].damageDealt
+                end
                 teamStats[allyID][teamID] = {}
                 teamStats[allyID][teamID].colorRed = teamColorRed
                 teamStats[allyID][teamID].colorGreen = teamColorGreen
@@ -378,7 +392,10 @@ local function updateStatsDamageReceived()
                 local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
                 local historyMax = Spring.GetTeamStatsHistory(teamID)
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageReceived = statsHistory[1].damageReceived
+                local damageReceived = 0
+                if statsHistory and #statsHistory > 0 then
+                    damageReceived = statsHistory[1].damageReceived
+                end
                 teamStats[allyID][teamID] = {}
                 teamStats[allyID][teamID].colorRed = teamColorRed
                 teamStats[allyID][teamID].colorGreen = teamColorGreen
@@ -400,8 +417,12 @@ local function updateStatsDamageEfficiency()
                 local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
                 local historyMax = Spring.GetTeamStatsHistory(teamID)
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageDealt = statsHistory[1].damageDealt
-                local damageReceived = statsHistory[1].damageReceived
+                local damageDealt = 0
+                local damageReceived = 0
+                if statsHistory and #statsHistory > 0 then
+                    damageDealt = statsHistory[1].damageDealt
+                    damageReceived = statsHistory[1].damageReceived
+                end
                 if damageReceived < 1 then
                     -- avoid dividing by 0
                     damageReceived = 1
@@ -435,19 +456,6 @@ local function updateStats()
     elseif metricChosenTitle == "Damage Efficiency" then
         updateStatsDamageEfficiency()
     end
-
-    --[[
-    Spring.Echo(string.format("debug updateStats():"))
-    for allyID, ally in pairs(teamStats) do
-        Spring.Echo(string.format("  allyID: %d", allyID))
-        for teamID, team in pairs(ally) do
-            Spring.Echo(string.format("    teamID: %d", teamID))
-            Spring.Echo(string.format("      value: %d", team.value))
-            Spring.Echo(string.format("      color: %d, %d, %d, %d",
-                team.colorRed, team.colorGreen, team.colorBlue, team.colorAlpha))
-        end
-    end
-    ]]
 end
 
 local function calculateHeaderSize()
@@ -492,7 +500,6 @@ local function setStatsAreaPosition()
 end
 
 local function calculateWidgetSize()
-    Spring.Echo(string.format("ui_scale: %f", ui_scale))
 
     distanceFromTopBar = math.floor(distanceFromTopBarDefault * ui_scale)
     borderPadding = math.floor(borderPaddingDefault * ui_scale)
@@ -502,8 +509,6 @@ local function calculateWidgetSize()
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * ui_scale)
     fontSize = math.floor(fontSizeDefault * ui_scale)
     fontSizeMetric = math.floor(fontSize / 2)
-
-    Spring.Echo(string.format("fontSize: %d", fontSize))
 
     widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale)
 
@@ -534,9 +539,6 @@ local function setWidgetPosition()
     setHeaderPosition()
     setSortingPosition()
     setStatsAreaPosition()
-
-    Spring.Echo(string.format("widget rect: [%d, %d, %d, %d]", widgetLeft, widgetBottom, widgetRight, widgetTop))
-    Spring.Echo(string.format("header rect: [%d, %d, %d, %d]", headerLeft, headerBottom, headerRight, headerTop))
 end
 
 local function createBackgroundShader()
@@ -564,6 +566,7 @@ local function drawHeader()
     )
 
     font:Begin()
+    font:SetTextColor({ 1, 1, 1, 1 })
     font:Print(
         headerLabel,
         headerLeft + borderPadding + headerLabelPadding,
@@ -763,10 +766,11 @@ local function drawAStatsBar(index, teamColor, amount, max)
         max
     )
 
-    local amountText = string.format("%d", amount)
+    local amountText = formatRes(amount)             -- string.format("%d", amount)
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
     local amountBottom = teamDecalBottom
     font:Begin()
+        font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
             amountText,
             amountMiddle,
@@ -937,9 +941,7 @@ function widget:MousePress(x, y, button)
         -- no change if user pressed header
         if (y < headerBottom) then
             local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerHeight)
-            metricChosenID = metricPressed
-            local metricChosen = getMetricChosen()
-            headerLabel = metricChosen.title
+            setMetricChosen(metricPressed)
             updateStats()
         end
 
