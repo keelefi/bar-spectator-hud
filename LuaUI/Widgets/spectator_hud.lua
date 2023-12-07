@@ -150,17 +150,17 @@ local images = {
 
 local function round(num, idp)
     local mult = 10 ^ (idp or 0)
-    return floor(num * mult + 0.5) / mult
+    return math.floor(num * mult + 0.5) / mult
 end
 
-local function formatResources(number)
-    if number < 1000 then
-        return string.format("%d", number)
-    elseif number < 100000 then
-        return string.format("%d %03d", number / 1000, number % 1000)
-    else
-        return string.format("%.1fM", number / 1000000)
+local function formatResources(amount)
+    local function addSpaces(number)
+        if number >= 1000 then
+            return string.format("%s %03d", addSpaces(math.floor(number / 1000)), number % 1000)
+        end
+        return number
     end
+    return addSpaces(round(amount))
 end
 
 local function isArmyUnit(unitDefID)
