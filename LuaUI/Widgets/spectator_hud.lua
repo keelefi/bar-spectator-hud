@@ -153,7 +153,7 @@ local function round(num, idp)
     return floor(num * mult + 0.5) / mult
 end
 
-local function formatRes(number)
+local function formatResources(number)
     if number < 1000 then
         return string.format("%d", number)
     elseif number < 100000 then
@@ -766,7 +766,7 @@ local function drawAStatsBar(index, teamColor, amount, max)
         max
     )
 
-    local amountText = formatRes(amount)             -- string.format("%d", amount)
+    local amountText = formatResources(amount)             -- string.format("%d", amount)
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
     local amountBottom = teamDecalBottom
     font:Begin()
