@@ -937,12 +937,14 @@ function widget:MousePress(x, y, button)
         return
     end
 
-    if (x > headerLeft) and (x < headerRight) and (y > metricChangeBottom) and (y < headerTop) and metricChangeInProgress then
-        -- no change if user pressed header
-        if (y < headerBottom) then
-            local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerHeight)
-            setMetricChosen(metricPressed)
-            updateStats()
+    if metricChangeInProgress then
+        if (x > headerLeft) and (x < headerRight) and (y > metricChangeBottom) and (y < headerTop) then
+            -- no change if user pressed header
+            if (y < headerBottom) then
+                local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerHeight)
+                setMetricChosen(metricPressed)
+                updateStats()
+            end
         end
 
         metricChangeInProgress = false
