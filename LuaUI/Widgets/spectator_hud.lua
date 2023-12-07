@@ -194,17 +194,6 @@ local function getMetricChosen()
     end
 end
 
-local function setMetricChosen(metricID)
-    if metricID < 1 or metricID > getAmountOfMetrics() then
-        return
-    end
-
-    metricChosenID = metricID
-
-    local metricChosen = getMetricChosen()
-    headerLabel = metricChosen.title
-end
-
 local function sortStats()
     local result = {}
 
@@ -895,6 +884,18 @@ local function checkAndUpdateHaveFullView()
     local haveFullViewOld = haveFullView
     haveFullView = select(2, Spring.GetSpectatingState())
     return haveFullView ~= haveFullViewOld
+end
+
+local function setMetricChosen(metricID)
+    if metricID < 1 or metricID > getAmountOfMetrics() then
+        return
+    end
+
+    metricChosenID = metricID
+
+    local metricChosen = getMetricChosen()
+    headerLabel = metricChosen.title
+    updateHeaderTooltip()
 end
 
 function widget:Initialize()
