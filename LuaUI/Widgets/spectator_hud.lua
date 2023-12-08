@@ -60,6 +60,7 @@ where
 local haveFullView = false
 
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
+local widgetScale = 0.8
 
 local topBarPosition
 local topBarShowButtons
@@ -489,17 +490,17 @@ local function setStatsAreaPosition()
 end
 
 local function calculateWidgetSize()
-
-    distanceFromTopBar = math.floor(distanceFromTopBarDefault * ui_scale)
-    borderPadding = math.floor(borderPaddingDefault * ui_scale)
-    headerLabelPadding = math.floor(headerLabelPaddingDefault * ui_scale)
-    sortingIconPadding = math.floor(sortingIconPaddingDefault * ui_scale)
-    teamDecalPadding = math.floor(teamDecalPaddingDefault * ui_scale)
-    teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * ui_scale)
-    fontSize = math.floor(fontSizeDefault * ui_scale)
+    local scaleMultiplier = ui_scale * widgetScale
+    distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
+    borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
+    headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
+    sortingIconPadding = math.floor(sortingIconPaddingDefault * scaleMultiplier)
+    teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
+    teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
+    fontSize = math.floor(fontSizeDefault * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize / 2)
 
-    widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale)
+    widgetWidth = math.floor(viewScreenWidth * 0.20 * scaleMultiplier)
 
     calculateHeaderSize()
     calculateSortingSize()
