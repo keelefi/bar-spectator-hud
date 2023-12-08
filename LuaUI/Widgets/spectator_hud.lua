@@ -115,6 +115,7 @@ local sortingTooltipName = "spectator_hud_sorting"
 local sortingTooltipTitle = "Sorting"
 local sortingPlayerTooltipText = "Sort by Player (click to change)"
 local sortingTeamTooltipText = "Sort by Team (click to change)"
+local sortingTeamAggregateTooltipText = "Sort by Team Aggregate (click to change)"
 
 local gaiaID = Spring.GetGaiaTeamID()
 local gaiaAllyID = select(6, Spring.GetTeamInfo(gaiaID, false))
@@ -141,6 +142,7 @@ local teamStats = {}
 local images = {
     sortingPlayer = "LuaUI/Images/spectator_hud/sorting-player.png",
     sortingTeam = "LuaUI/Images/spectator_hud/sorting-team.png",
+    sortingTeamAggregate = "LuaUI/Images/spectator_hud/sorting-plus.png",
     barOutlineStart = "LuaUI/Images/spectator_hud/bar-outline-start.png",
     barOutlineMiddle = "LuaUI/Images/spectator_hud/bar-outline-middle.png",
     barOutlineEnd = "LuaUI/Images/spectator_hud/bar-outline-end.png",
@@ -170,6 +172,16 @@ local function isArmyUnit(unitDefID)
     else
         return false
     end
+end
+
+local function getAmountOfAllyTeams()
+    local amountOfAllyTeams = 0
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            amountOfAllyTeams = amountOfAllyTeams + 1
+        end
+    end
+    return amountOfAllyTeams
 end
 
 local function getAmountOfTeams()
@@ -240,6 +252,28 @@ local function sortStats()
             end
         end
         result = temporaryTable
+    elseif sortingChosen == "teamaggregate" then
+        local allyTotals = {}
+        local index = 1
+        for allyID, ally in pairs(teamStats) do
+            local currentAllyTotal = 0
+            for _, team in pairs(ally) do
+                currentAllyTotal = currentAllyTotal + team.value
+            end
+            local allyTeamCaptainID = Spring.GetTeamList(allyID)[1]
+            local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(allyTeamCaptainID)
+            allyTotals[index] = {}
+            allyTotals[index].colorRed = teamColorRed
+            allyTotals[index].colorGreen = teamColorGreen
+            allyTotals[index].colorBlue = teamColorBlue
+            allyTotals[index].colorAlpha = teamColorAlpha
+            allyTotals[index].value = currentAllyTotal
+            index = index + 1
+        end
+        table.sort(allyTotals, function(left, right)
+            return left.value > right.value
+        end)
+        result = allyTotals
     end
 
     return result
@@ -506,7 +540,14 @@ local function calculateWidgetSize()
     calculateSortingSize()
     calculateStatsBarSize()
     statsAreaWidth = widgetWidth
-    statsAreaHeight = statsBarHeight * getAmountOfTeams()
+
+    local statBarAmount
+    if sortingChosen == "teamaggregate" then
+        statBarAmount = getAmountOfAllyTeams()
+    else
+        statBarAmount = getAmountOfTeams()
+    end
+    statsAreaHeight = statsBarHeight * statBarAmount
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
     barChunkSize = math.floor(teamDecalHeight / 2)
 
@@ -588,6 +629,8 @@ local function updateSortingTooltip()
             tooltipText = sortingPlayerTooltipText
         elseif sortingChosen == "team" then
             tooltipText = sortingTeamTooltipText
+        elseif sortingChosen == "teamaggregate" then
+            tooltipText = sortingTeamAggregateTooltipText
         end
     
         WG['tooltip'].AddTooltip(
@@ -631,6 +674,8 @@ local function drawSorting()
         gl.Texture(images["sortingPlayer"])
     elseif sortingChosen == "team" then
         gl.Texture(images["sortingTeam"])
+    elseif sortingChosen == "teamaggregate" then
+        gl.Texture(images["sortingTeamAggregate"])
     end
     gl.TexRect(
         sortingLeft + sortingIconPadding,
@@ -957,9 +1002,12 @@ function widget:MousePress(x, y, button)
         if sortingChosen == "player" then
             sortingChosen = "team"
         elseif sortingChosen == "team" then
+            sortingChosen = "teamaggregate"
+        elseif sortingChosen == "teamaggregate" then
             sortingChosen = "player"
         end
-        updateSortingTooltip()
+        -- we need to do full reinit because amount of rows to display has changed
+        reInit()
     end
 end
 
