@@ -36,7 +36,7 @@ For each statistic, you can decide if you want to sort per team or per player
 The layout of the widget is as follows:
 
     --------------------------------------------
-   |  Select View                   |  Sorting  |
+   |  Select View             | VS |  Sorting  |
     --------------------------------------------
    | P1  <- Bar1                           ->   |
    | P2  <- Bar2                       ->       |
@@ -50,6 +50,7 @@ where
 
 * Select View is a combobox where the user can select which view to display
 * Sorting is a switch the switches between sorting per team or per player
+* VS is a toggle between versus mode and normal mode
 * P1-P6 are unique player identifiers called player decals (currently just a color box)
 * Bar1-Bar6 are value bars showing linear relationship between the values
 * Every bar has a text on top showing approximate value as textual represenation
@@ -70,28 +71,37 @@ local widgetWidth, widgetHeight
 local widgetTop, widgetBottom, widgetLeft, widgetRight
 
 local headerWidth, headerHeight
+local toggleVSModeWidth, toggleVSModeHeight
 local sortingWidth, sortingHeight
 
 local statsBarWidth, statsBarHeight
 local statsAreaWidth, statsAreaHeight
 
+local vsModeMetricWidth, vsModeMetricHeight
+local vsModeMetricsAreaWidth, vsModeMetricsAreaHeight
+
 local headerTop, headerBottom, headerLeft, headerRight
 local metricChangeBottom
 local sortingTop, sortingBottom, sortingLeft, sortingRight
+local toggleVSModeTop, toggleVSModeBottom, toggleVSModeLeft, toggleVSModeRight
 local statsAreaTop, statsAreaBottom, statsAreaLeft, statsAreaRight
+local vsModeMetricsAreaTop, vsModeMetricsAreaBottom, vsModeMetricsAreaLeft, vsModeMetricsAreaRight
 
 local backgroundShader
 
 local headerLabel = "Metal Income"
 
 local sortingBackgroundDisplayList
+local toggleVSModeBackgroundDisplayList
 
 local statsAreaBackgroundDisplayList
+local vsModeBackgroundDisplayLists = {}
 
 local font
 local fontSize
 local fontSizeDefault = 64
 local fontSizeMetric
+local fontSizeVSBar
 
 local distanceFromTopBar
 local distanceFromTopBarDefault = 10
@@ -102,13 +112,24 @@ local headerLabelPadding
 local headerLabelPaddingDefault = 10
 local sortingIconPadding
 local sortingIconPaddingDefault = 8
+local toggleVSModeIconPadding
+local toggleVSModeIconPaddingDefault = 8
 local teamDecalPadding
 local teamDecalPaddingDefault = 6
+local vsModeMetricIconPadding
+local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
+local vsModeMetricIconHeight
 local teamDecalCornerSize
 local teamDecalCornerSizeDefault = 4
+local vsModeBarTextPadding
+local vsModeBarTextPaddingDefault = 20
 
 local barChunkSize
+local vsModeBarChunkSize
+local vsModeBarMarkerWidth, vsModeBarMarkerHeight
+local vsModeBarMarkerWidthDefault = 2
+local vsModeBarMarkerHeightDefault = 8
 --local barChunkSizeSource = 40      -- from source image
 
 local sortingTooltipName = "spectator_hud_sorting"
@@ -116,6 +137,10 @@ local sortingTooltipTitle = "Sorting"
 local sortingPlayerTooltipText = "Sort by Player (click to change)"
 local sortingTeamTooltipText = "Sort by Team (click to change)"
 local sortingTeamAggregateTooltipText = "Sort by Team Aggregate (click to change)"
+
+local toggleVSModeTooltipName = "spectator_hud_versus_mode"
+local toggleVSModeTooltipTitle = "Versus Mode"
+local toggleVSModeTooltipText = "Toggle Versus Mode on/off"
 
 local gaiaID = Spring.GetGaiaTeamID()
 local gaiaAllyID = select(6, Spring.GetTeamInfo(gaiaID, false))
@@ -134,10 +159,23 @@ local metricsAvailable = {
     { id=7, title="Damage Efficiency", tooltip="Damage Efficiency" },
 }
 
+local vsMode = false
+
+local vsModeMetrics = {
+    { id=1, icon="iconM", metric="Metal Income"},
+    { id=2, icon="iconE", metric="Energy Income"},
+    { id=3, icon="iconBP", metric="Build Power"},
+    { id=4, icon="iconM", metric="Metal Produced"},
+    { id=5, icon="iconE", metric="Energy Produced"},
+    { id=6, icon="iconA", metric="Army Value"},
+    { id=7, icon="iconD", metric="Damage Dealt"},
+}
+
 local metricChosenID = 1
 local metricChangeInProgress = false
 local sortingChosen = "player"
 local teamStats = {}
+local vsModeStats = {}
 
 local images = {
     sortingPlayer = "LuaUI/Images/spectator_hud/sorting-player.png",
@@ -149,6 +187,16 @@ local images = {
     barProgressStart = "LuaUI/Images/spectator_hud/bar-progress-start.png",
     barProgressMiddle = "LuaUI/Images/spectator_hud/bar-progress-middle.png",
     barProgressEnd = "LuaUI/Images/spectator_hud/bar-progress-end.png",
+    barProgressStartRed = "LuaUI/Images/spectator_hud/bar-progress-start-red.png",
+    barProgressMiddleRed = "LuaUI/Images/spectator_hud/bar-progress-middle-red.png",
+    barProgressMiddleBlue = "LuaUI/Images/spectator_hud/bar-progress-middle-blue.png",
+    barProgressEndBlue = "LuaUI/Images/spectator_hud/bar-progress-end-blue.png",
+    toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
+    iconM = "LuaUI/Images/spectator_hud/button-m.png",
+    iconE = "LuaUI/Images/spectator_hud/button-e.png",
+    iconBP = "LuaUI/Images/spectator_hud/button-bp.png",
+    iconA = "LuaUI/Images/spectator_hud/button-a.png",
+    iconD = "LuaUI/Images/spectator_hud/button-d.png",
 }
 
 local function round(num, idp)
@@ -156,7 +204,25 @@ local function round(num, idp)
     return math.floor(num * mult + 0.5) / mult
 end
 
-local function formatResources(amount)
+local thousand = 1000
+local tenThousand = 10 * thousand
+local million = thousand * thousand
+local tenMillion = 10 * million
+local function formatResources(amount, short)
+    if short then
+        if amount >= tenMillion then
+            return string.format("%d M", amount / million)
+        elseif amount >= million then
+            return string.format("%.1f M", amount / million)
+        elseif amount >= tenThousand then
+            return string.format("%d k", amount / thousand)
+        elseif amount >= thousand then
+            return string.format("%.1f k", amount / thousand)
+        else
+            return string.format("%d", amount)
+        end
+    end
+
     local function addSpaces(number)
         if number >= 1000 then
             return string.format("%s %03d", addSpaces(math.floor(number / 1000)), number % 1000)
@@ -171,6 +237,14 @@ local function isArmyUnit(unitDefID)
         return true
     else
         return false
+    end
+end
+
+local function getUnitBuildPower(unitDefID)
+    if UnitDefs[unitDefID].buildSpeed then
+        return UnitDefs[unitDefID].buildSpeed
+    else
+        return 0
     end
 end
 
@@ -200,11 +274,15 @@ local function getAmountOfMetrics()
 end
 
 local function getMetricChosen()
-    for _, currentMetric in pairs(metricsAvailable) do
+    for _, currentMetric in ipairs(metricsAvailable) do
         if metricChosenID == currentMetric.id then
             return currentMetric
         end
     end
+end
+
+local function getAmountOfVSModeMetrics()
+    return #vsModeMetrics
 end
 
 local function sortStats()
@@ -463,22 +541,88 @@ local function updateStatsDamageEfficiency()
     end
 end
 
+local function updateStatsVSMode()
+    vsModeStats = {}
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            vsModeStats[allyID] = {}
+            local teamList = Spring.GetTeamList(allyID)
+            -- use color of captain
+            local colorRed, colorGreen, colorBlue, colorAlpha = Spring.GetTeamColor(teamList[1])
+            vsModeStats[allyID].color = { colorRed, colorGreen, colorBlue, colorAlpha }
+            local metalIncomeTotal = 0
+            local energyIncomeTotal = 0
+            local buildPowerTotal = 0
+            local metalProducedTotal = 0
+            local energyProducedTotal = 0
+            local armyValueTotal = 0
+            local damageDoneTotal = 0
+            for _, teamID in ipairs(teamList) do
+                local historyMax = Spring.GetTeamStatsHistory(teamID)
+                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+                local teamMetalIncome = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
+                local teamEnergyIncome = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
+                local teamBuildPower = 0 -- TODO: calculate build power
+                local teamMetalProduced = 0
+                local teamEnergyProduced = 0
+                local teamDamageDone = 0
+                if statsHistory and #statsHistory > 0 then
+                    teamMetalProduced = statsHistory[1].metalProduced
+                    teamEnergyProduced = statsHistory[1].energyProduced
+                    teamDamageDone = statsHistory[1].damageDealt
+                end
+                local teamArmyValueTotal = 0
+                local unitIDs = Spring.GetTeamUnits(teamID)
+                for i = 1, #unitIDs do
+                    local unitID = unitIDs[i]
+                    local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                    local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
+                    if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
+                        teamArmyValueTotal = teamArmyValueTotal + currentUnitMetalCost
+                    end
+                    if not Spring.GetUnitIsBeingBuilt(unitID) then
+                        teamBuildPower = teamBuildPower + getUnitBuildPower(currentUnitDefID)
+                    end
+                end
+                metalIncomeTotal = metalIncomeTotal + teamMetalIncome
+                energyIncomeTotal = energyIncomeTotal + teamEnergyIncome
+                buildPowerTotal = buildPowerTotal + teamBuildPower
+                metalProducedTotal = metalProducedTotal + teamMetalProduced
+                energyProducedTotal = energyProducedTotal + teamEnergyProduced
+                armyValueTotal = armyValueTotal + teamArmyValueTotal
+                damageDoneTotal = damageDoneTotal + teamDamageDone
+            end
+            vsModeStats[allyID].metalIncome = metalIncomeTotal
+            vsModeStats[allyID].energyIncome = energyIncomeTotal
+            vsModeStats[allyID].buildPower = buildPowerTotal
+            vsModeStats[allyID].metalProduced = metalProducedTotal
+            vsModeStats[allyID].energyProduced = energyProducedTotal
+            vsModeStats[allyID].armyValue = armyValueTotal
+            vsModeStats[allyID].damageDone = damageDoneTotal
+        end
+    end
+end
+
 local function updateStats()
-    local metricChosenTitle = getMetricChosen().title
-    if metricChosenTitle == "Metal Income" then
-        updateStatsMetalIncome()
-    elseif metricChosenTitle == "Metal Produced" then
-        updateStatsMetalProduced()
-    elseif metricChosenTitle == "Army Value" then
-        updateStatsArmyValue()
-    elseif metricChosenTitle == "Army Size" then
-        updateStatsArmySize()
-    elseif metricChosenTitle == "Damage Done" then
-        updateStatsDamageDone()
-    elseif metricChosenTitle == "Damage Received" then
-        updateStatsDamageReceived()
-    elseif metricChosenTitle == "Damage Efficiency" then
-        updateStatsDamageEfficiency()
+    if not vsMode then
+        local metricChosenTitle = getMetricChosen().title
+        if metricChosenTitle == "Metal Income" then
+            updateStatsMetalIncome()
+        elseif metricChosenTitle == "Metal Produced" then
+            updateStatsMetalProduced()
+        elseif metricChosenTitle == "Army Value" then
+            updateStatsArmyValue()
+        elseif metricChosenTitle == "Army Size" then
+            updateStatsArmySize()
+        elseif metricChosenTitle == "Damage Done" then
+            updateStatsDamageDone()
+        elseif metricChosenTitle == "Damage Received" then
+            updateStatsDamageReceived()
+        elseif metricChosenTitle == "Damage Efficiency" then
+            updateStatsDamageEfficiency()
+        end
+    else
+        updateStatsVSMode()
     end
 end
 
@@ -486,8 +630,9 @@ local function calculateHeaderSize()
     local headerTextHeight = font:GetTextHeight(headerLabel) * fontSize
     headerHeight = math.floor(2 * borderPadding + headerTextHeight)
 
-    -- note: sorting is a square. therefore, we remove from header width same as the height.
-    headerWidth = widgetWidth - headerHeight
+    -- note: sorting and versus mode toggles are a squares.
+    -- therefore, we remove from header width same as twice the height.
+    headerWidth = widgetWidth - 2 * headerHeight
 end
 
 local function calculateSortingSize()
@@ -495,9 +640,19 @@ local function calculateSortingSize()
     sortingWidth = sortingHeight   -- sorting is a square box
 end
 
+local function calculateToggleVSModeSize()
+    toggleVSModeHeight = headerHeight
+    toggleVSModeWidth = toggleVSModeHeight
+end
+
 local function calculateStatsBarSize()
     statsBarHeight = math.floor(headerHeight * 0.80)
     statsBarWidth = widgetWidth
+end
+
+local function calculateVSModeMetricSize()
+    vsModeMetricHeight = math.floor(headerHeight * 1.20)
+    vsModeMetricWidth = widgetWidth
 end
 
 local function setSortingPosition()
@@ -507,11 +662,18 @@ local function setSortingPosition()
     sortingRight = widgetRight
 end
 
+local function setToggleVSModePosition()
+    toggleVSModeTop = widgetTop
+    toggleVSModeBottom = widgetTop - toggleVSModeHeight
+    toggleVSModeLeft = sortingLeft - toggleVSModeWidth
+    toggleVSModeRight = sortingLeft
+end
+
 local function setHeaderPosition()
     headerTop = widgetTop
     headerBottom = widgetTop - headerHeight
     headerLeft = widgetLeft
-    headerRight = widgetRight - sortingWidth
+    headerRight = widgetRight - 2 * sortingWidth
 
     metricChangeBottom = headerBottom - headerHeight * getAmountOfMetrics()
 end
@@ -523,23 +685,37 @@ local function setStatsAreaPosition()
     statsAreaRight = widgetRight
 end
 
+local function setVSModeMetricsAreaPosition()
+    vsModeMetricsAreaTop = widgetTop - headerHeight
+    vsModeMetricsAreaBottom = widgetBottom
+    vsModeMetricsAreaLeft = widgetLeft
+    vsModeMetricsAreaRight = widgetRight
+end
+
 local function calculateWidgetSize()
     local scaleMultiplier = ui_scale * widgetScale
     distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
     borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
     headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
     sortingIconPadding = math.floor(sortingIconPaddingDefault * scaleMultiplier)
+    toggleVSModeIconPadding = math.floor(toggleVSModeIconPaddingDefault * scaleMultiplier)
     teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
+    vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
+    vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
     fontSize = math.floor(fontSizeDefault * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize / 2)
+    fontSizeVSBar = math.floor(fontSize * 0.4)
 
     widgetWidth = math.floor(viewScreenWidth * 0.20 * scaleMultiplier)
 
     calculateHeaderSize()
     calculateSortingSize()
+    calculateToggleVSModeSize()
     calculateStatsBarSize()
+    calculateVSModeMetricSize()
     statsAreaWidth = widgetWidth
+    vsModeMetricsAreaWidth = widgetWidth
 
     local statBarAmount
     if sortingChosen == "teamaggregate" then
@@ -549,9 +725,19 @@ local function calculateWidgetSize()
     end
     statsAreaHeight = statsBarHeight * statBarAmount
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
+    vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
     barChunkSize = math.floor(teamDecalHeight / 2)
+    vsModeBarChunkSize = math.floor(vsModeMetricIconHeight / 2)
+    vsModeBarMarkerWidth = math.floor(vsModeBarMarkerWidthDefault * scaleMultiplier)
+    vsModeBarMarkerHeight = math.floor(vsModeBarMarkerHeightDefault * scaleMultiplier)
 
-    widgetHeight = headerHeight + statsAreaHeight
+    vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
+
+    if not vsMode then
+        widgetHeight = headerHeight + statsAreaHeight
+    else
+        widgetHeight = headerHeight + vsModeMetricsAreaHeight
+    end
 end
 
 local function setWidgetPosition()
@@ -569,7 +755,9 @@ local function setWidgetPosition()
 
     setHeaderPosition()
     setSortingPosition()
+    setToggleVSModePosition()
     setStatsAreaPosition()
+    setVSModeMetricsAreaPosition()
 end
 
 local function createBackgroundShader()
@@ -643,6 +831,18 @@ local function updateSortingTooltip()
     end
 end
 
+local function updateToggleVSModeTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].AddTooltip(
+            toggleVSModeTooltipName,
+            { toggleVSModeLeft, toggleVSModeBottom, toggleVSModeRight, toggleVSModeTop },
+            toggleVSModeTooltipText,
+            nil,
+            toggleVSModeTooltipTitle
+        )
+    end
+end
+
 local function deleteHeaderTooltip()
     if WG['tooltip'] then
         WG['tooltip'].RemoveTooltip(headerTooltipName)
@@ -655,6 +855,12 @@ local function deleteSortingTooltip()
     end
 end
 
+local function deleteToggleVSModeTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].RemoveTooltip(toggleVSModeTooltipName)
+    end
+end
+
 local function createSorting()
     sortingBackgroundDisplayList = gl.CreateList(function ()
         WG.FlowUI.Draw.Element(
@@ -662,6 +868,19 @@ local function createSorting()
             sortingBottom,
             sortingRight,
             sortingTop,
+            1, 1, 1, 1,
+            1, 1, 1, 1
+        )
+    end)
+end
+
+local function createToggleVSMode()
+    toggleVSModeBackgroundDisplayList = gl.CreateList(function ()
+        WG.FlowUI.Draw.Element(
+            toggleVSModeLeft,
+            toggleVSModeBottom,
+            toggleVSModeRight,
+            toggleVSModeTop,
             1, 1, 1, 1,
             1, 1, 1, 1
         )
@@ -686,6 +905,19 @@ local function drawSorting()
     gl.Texture(false)
 end
 
+local function drawToggleVSMode()
+    -- TODO: add visual indication when toggle is on/off
+    gl.Color(1, 1, 1, 1)
+    gl.Texture(images["toggleVSMode"])
+    gl.TexRect(
+        toggleVSModeLeft + toggleVSModeIconPadding,
+        toggleVSModeBottom + toggleVSModeIconPadding,
+        toggleVSModeRight - toggleVSModeIconPadding,
+        toggleVSModeTop - toggleVSModeIconPadding
+    )
+    gl.Texture(false)
+end
+
 local function createStatsArea()
     statsAreaBackgroundDisplayList = gl.CreateList(function ()
         WG.FlowUI.Draw.Element(
@@ -697,6 +929,25 @@ local function createStatsArea()
             1, 1, 1, 1
         )
     end)
+end
+
+local function createVSModeBackgroudDisplayLists()
+    vsModeBackgroundDisplayLists = {}
+    for _, vsModeMetric in ipairs(vsModeMetrics) do
+        local currentBottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+        local currentTop = currentBottom + vsModeMetricHeight
+        local currentDisplayList = gl.CreateList(function ()
+            WG.FlowUI.Draw.Element(
+                vsModeMetricsAreaLeft,
+                currentBottom,
+                vsModeMetricsAreaRight,
+                currentTop,
+                1, 1, 1, 1,
+                1, 1, 1, 1
+            )
+        end)
+        table.insert(vsModeBackgroundDisplayLists, currentDisplayList)
+    end
 end
 
 local function drawABar(left, bottom, right, top, amount, max)
@@ -801,7 +1052,7 @@ local function drawAStatsBar(index, teamColor, amount, max)
         max
     )
 
-    local amountText = formatResources(amount)             -- string.format("%d", amount)
+    local amountText = formatResources(amount, false)
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
     local amountBottom = teamDecalBottom
     font:Begin()
@@ -834,6 +1085,182 @@ local function drawStatsBars()
             currentStat.value,
             max)
         index = index + 1
+    end
+end
+
+local function drawVSBar(valueRed, valueBlue, left, bottom, right, top)
+    local barLength = math.floor(right - left)
+
+    local divider = 0
+    if valueRed > 0 or valueBlue > 0 then
+        divider = left + math.floor(barLength * valueRed / (valueRed + valueBlue))
+    else
+        if valueRed == 0 then
+            if valueBlue == 0 then
+                divider = left + math.floor(barLength / 2)
+            else
+                divider = left + vsModeBarChunkSize
+            end
+        else
+            divider = right - vsModeBarChunkSize
+        end
+    end
+
+    gl.Texture(images["barProgressStartRed"])
+    gl.TexRect(
+        left,
+        bottom,
+        left + vsModeBarChunkSize,
+        top
+    )
+    gl.Texture(images["barProgressMiddleRed"])
+    gl.TexRect(
+        left + vsModeBarChunkSize,
+        bottom,
+        divider,
+        top
+    )
+
+    gl.Texture(images["barProgressMiddleBlue"])
+    gl.TexRect(
+        divider,
+        bottom,
+        right - vsModeBarChunkSize,
+        top
+    )
+    gl.Texture(images["barProgressEndBlue"])
+    gl.TexRect(
+        right - vsModeBarChunkSize,
+        bottom,
+        right,
+        top
+    )
+
+    gl.Color(1, 1, 1, 1)
+    gl.Texture(images["barOutlineStart"])
+    gl.TexRect(
+        left,
+        bottom,
+        left + vsModeBarChunkSize,
+        top
+    )
+    gl.Texture(images["barOutlineMiddle"])
+    gl.TexRect(
+        left + vsModeBarChunkSize,
+        bottom,
+        right - vsModeBarChunkSize,
+        top
+    )
+    gl.Texture(images["barOutlineEnd"])
+    gl.TexRect(
+        right - vsModeBarChunkSize,
+        bottom,
+        right,
+        top
+    )
+
+    gl.Color(1, 1, 1, 1)
+    local markers = {{0.2, 1}, {0.4, 1}, {0.5, 2}, {0.6, 1}, {0.8, 1}}
+    for _, marker in ipairs(markers) do
+        markerX = left + math.floor(barLength * marker[1])
+        gl.Rect(
+            markerX - vsModeBarMarkerWidth * marker[2],
+            top - vsModeBarMarkerHeight * marker[2],
+            markerX + vsModeBarMarkerWidth * marker[2],
+            top
+        )
+        gl.Rect(
+            markerX - vsModeBarMarkerWidth * marker[2],
+            bottom,
+            markerX + vsModeBarMarkerWidth * marker[2],
+            bottom + vsModeBarMarkerHeight * marker[2]
+        )
+    end
+
+    font:Begin()
+        font:SetTextColor({ 1, 1, 1, 1 })
+        font:Print(
+            formatResources(valueRed, true),
+            --divider - vsModeBarTextPadding,
+            left + vsModeBarTextPadding,
+            bottom + math.floor((top - bottom) / 2),
+            fontSizeVSBar,
+            --'rvO'
+            'vO'
+        )
+        font:SetTextColor({ 1, 1, 1, 1 })
+        font:Print(
+            formatResources(valueBlue, true),
+            --divider + vsModeBarTextPadding,
+            right - vsModeBarTextPadding,
+            bottom + math.floor((top - bottom) / 2),
+            fontSizeVSBar,
+            --'vO'
+            'rvO'
+        )
+    font:End()
+end
+
+local function drawVSModeMetrics()
+    local indexRed, indexBlue
+    if vsModeStats[0].color[1] == 1 then
+        indexRed = 0
+        indexBlue = 1
+    else
+        indexRed = 1
+        indexBlue = 0
+    end
+
+    for _, vsModeMetric in ipairs(vsModeMetrics) do
+        local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+        local top = bottom + vsModeMetricHeight
+
+        local iconLeft = vsModeMetricsAreaLeft + borderPadding + vsModeMetricIconPadding
+        local iconRight = iconLeft + vsModeMetricIconHeight
+        local iconBottom = bottom + borderPadding + vsModeMetricIconPadding
+        local iconTop = iconBottom + vsModeMetricIconHeight
+
+        local iconImage = images[vsModeMetric.icon]
+        gl.Color(1, 1, 1, 1)
+        gl.Texture(iconImage)
+        gl.TexRect(
+            iconLeft,
+            iconBottom,
+            iconRight,
+            iconTop
+        )
+
+        local valueRed, valueBlue
+        if vsModeMetric.metric == "Metal Income" then
+            valueRed = vsModeStats[indexRed].metalIncome
+            valueBlue = vsModeStats[indexBlue].metalIncome
+        elseif vsModeMetric.metric == "Energy Income" then
+            valueRed = vsModeStats[indexRed].energyIncome
+            valueBlue = vsModeStats[indexBlue].energyIncome
+        elseif vsModeMetric.metric == "Build Power" then
+            valueRed = vsModeStats[indexRed].buildPower
+            valueBlue = vsModeStats[indexBlue].buildPower
+        elseif vsModeMetric.metric == "Metal Produced" then
+            valueRed = vsModeStats[indexRed].metalProduced
+            valueBlue = vsModeStats[indexBlue].metalProduced
+        elseif vsModeMetric.metric == "Energy Produced" then
+            valueRed = vsModeStats[indexRed].energyProduced
+            valueBlue = vsModeStats[indexBlue].energyProduced
+        elseif vsModeMetric.metric == "Army Value" then
+            valueRed = vsModeStats[indexRed].armyValue
+            valueBlue = vsModeStats[indexBlue].armyValue
+        elseif vsModeMetric.metric == "Damage Dealt" then
+            valueRed = vsModeStats[indexRed].damageDone
+            valueBlue = vsModeStats[indexBlue].damageDone
+        end
+
+        drawVSBar(
+            valueRed,
+            valueBlue,
+            iconRight + borderPadding + vsModeMetricIconPadding * 2,
+            iconBottom,
+            vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2,
+            iconTop)
     end
 end
 
@@ -889,8 +1316,18 @@ local function deleteSorting()
     gl.DeleteList(sortingBackgroundDisplayList)
 end
 
+local function deleteToggleVSMode()
+    gl.DeleteList(toggleVSModeBackgroundDisplayList)
+end
+
 local function deleteStatsArea()
     gl.DeleteList(statsAreaBackgroundDisplayList)
+end
+
+local function deleteVSModeBackgroudDisplayLists()
+    for _, vsModeBackgroundDisplayList in ipairs(vsModeBackgroundDisplayLists) do
+        gl.DeleteList(vsModeBackgroundDisplayList)
+    end
 end
 
 local function init()
@@ -903,7 +1340,10 @@ local function init()
     updateHeaderTooltip()
     createSorting()
     updateSortingTooltip()
+    createToggleVSMode()
+    updateToggleVSModeTooltip()
     createStatsArea()
+    createVSModeBackgroudDisplayLists()
 
     updateStats()
 end
@@ -913,7 +1353,10 @@ local function deInit()
     deleteHeaderTooltip()
     deleteSorting()
     deleteSortingTooltip()
+    deleteToggleVSMode()
+    deleteToggleVSModeTooltip()
     deleteStatsArea()
+    deleteVSModeBackgroudDisplayLists()
 end
 
 local function reInit()
@@ -990,6 +1433,10 @@ function widget:MousePress(x, y, button)
             if (y < headerBottom) then
                 local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerHeight)
                 setMetricChosen(metricPressed)
+                if vsMode then
+                    vsMode = false
+                    reInit()
+                end
                 updateStats()
             end
         end
@@ -1008,6 +1455,13 @@ function widget:MousePress(x, y, button)
         end
         -- we need to do full reinit because amount of rows to display has changed
         reInit()
+        return
+    end
+
+    if (x > toggleVSModeLeft) and (x < toggleVSModeRight) and (y > toggleVSModeBottom) and (y < toggleVSModeTop) then
+        vsMode = not vsMode
+        reInit()
+        return
     end
 end
 
@@ -1061,8 +1515,19 @@ function widget:DrawScreen()
         gl.CallList(sortingBackgroundDisplayList)
         drawSorting()
 
-        gl.CallList(statsAreaBackgroundDisplayList)
-        drawStatsBars()
+        gl.CallList(toggleVSModeBackgroundDisplayList)
+        drawToggleVSMode()
+
+        if not vsMode then
+            gl.CallList(statsAreaBackgroundDisplayList)
+            drawStatsBars()
+        else
+            for _, vsModeBackgroundDisplayList in ipairs(vsModeBackgroundDisplayLists) do
+                gl.CallList(vsModeBackgroundDisplayList)
+            end
+
+            drawVSModeMetrics()
+        end
 
         if metricChangeInProgress then
             drawMetricChange()
