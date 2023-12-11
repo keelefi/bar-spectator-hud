@@ -699,7 +699,7 @@ local function setVSModeMetricsAreaPosition()
 end
 
 local function calculateWidgetSize()
-    local scaleMultiplier = ui_scale * widgetScale
+    local scaleMultiplier = ui_scale * widgetScale * viewScreenWidth / 3840
     distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
     borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
     headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
@@ -709,11 +709,12 @@ local function calculateWidgetSize()
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
     vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
+
     fontSize = math.floor(fontSizeDefault * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize / 2)
     fontSizeVSBar = math.floor(fontSize * 0.4)
 
-    widgetWidth = math.floor(viewScreenWidth * 0.20 * scaleMultiplier)
+    widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
     calculateHeaderSize()
     calculateSortingSize()
