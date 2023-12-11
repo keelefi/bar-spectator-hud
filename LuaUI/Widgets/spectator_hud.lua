@@ -165,6 +165,7 @@ local metricsAvailable = {
 }
 
 local vsMode = false
+local vsModeEnabled = false
 
 local vsModeMetrics = {
     { id=1, icon="iconM", metric="Metal Income"},
@@ -911,7 +912,7 @@ local function drawSorting()
 end
 
 local function drawToggleVSMode()
-    -- TODO: add visual indication when toggle is on/off
+    -- TODO: add visual indication when toggle disabled
     gl.Color(1, 1, 1, 1)
     gl.Texture(images["toggleVSMode"])
     gl.TexRect(
@@ -921,6 +922,18 @@ local function drawToggleVSMode()
         toggleVSModeTop - toggleVSModeIconPadding
     )
     gl.Texture(false)
+
+    if vsMode then
+        gl.Blending(GL.SRC_ALPHA, GL.ONE)
+        gl.Color(1, 0.2, 0.2, 0.2)
+        gl.Rect(
+            toggleVSModeLeft + toggleVSModeIconPadding,
+            toggleVSModeBottom + toggleVSModeIconPadding,
+            toggleVSModeRight - toggleVSModeIconPadding,
+            toggleVSModeTop - toggleVSModeIconPadding
+        )
+        gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+    end
 end
 
 local function createStatsArea()
@@ -1350,6 +1363,8 @@ local function init()
     createStatsArea()
     createVSModeBackgroudDisplayLists()
 
+    vsModeEnabled = getAmountOfAllyTeams() == 2
+
     updateStats()
 end
 
@@ -1463,10 +1478,12 @@ function widget:MousePress(x, y, button)
         return
     end
 
-    if (x > toggleVSModeLeft) and (x < toggleVSModeRight) and (y > toggleVSModeBottom) and (y < toggleVSModeTop) then
-        vsMode = not vsMode
-        reInit()
-        return
+    if vsModeEnabled then
+        if (x > toggleVSModeLeft) and (x < toggleVSModeRight) and (y > toggleVSModeBottom) and (y < toggleVSModeTop) then
+            vsMode = not vsMode
+            reInit()
+            return
+        end
     end
 end
 
