@@ -90,6 +90,11 @@ local vsModeMetricsAreaTop, vsModeMetricsAreaBottom, vsModeMetricsAreaLeft, vsMo
 local backgroundShader
 
 local headerLabel = "Metal Income"
+local headerLabelDefault = "Metal Income"
+--[[ note: headerLabelDefault is a silly hack. GetTextHeight will return different value depending
+     on the provided text. Therefore, we need to always provide it with the same text or otherwise
+     the widget will keep on resizing depending on the header label.
+]]
 
 local sortingBackgroundDisplayList
 local toggleVSModeBackgroundDisplayList
@@ -627,7 +632,7 @@ local function updateStats()
 end
 
 local function calculateHeaderSize()
-    local headerTextHeight = font:GetTextHeight(headerLabel) * fontSize
+    local headerTextHeight = font:GetTextHeight(headerLabelDefault) * fontSize
     headerHeight = math.floor(2 * borderPadding + headerTextHeight)
 
     -- note: sorting and versus mode toggles are a squares.
