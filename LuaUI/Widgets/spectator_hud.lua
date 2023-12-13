@@ -149,6 +149,8 @@ local vsModeBarMarkerWidthDefault = 2
 local vsModeBarMarkerHeightDefault = 8
 --local barChunkSizeSource = 40      -- from source image
 
+local tooltipNames = {}
+
 local buttonWidgetSizeIncreaseTooltipName = "spectator_hud_size_increase"
 local buttonWidgetSizeDecreaseTooltipName = "spectator_hud_size_decrease"
 
@@ -393,6 +395,11 @@ local function updateStatsMetalIncome()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalIncome
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -418,6 +425,11 @@ local function updateStatsMetalProduced()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalProduced
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -447,6 +459,11 @@ local function updateStatsArmyValue()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armyValueTotal
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -475,6 +492,11 @@ local function updateStatsArmySize()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armySizeTotal
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -500,6 +522,11 @@ local function updateStatsDamageDone()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageDealt
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -525,6 +552,11 @@ local function updateStatsDamageReceived()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageReceived
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -557,6 +589,11 @@ local function updateStatsDamageEfficiency()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = value
+                local playerID = Spring.GetPlayerList(teamID)
+                if playerID then
+                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    teamStats[allyID][teamID].name = playerName
+                end
             end
         end
     end
@@ -1247,7 +1284,7 @@ local function drawABar(left, bottom, right, top, amount, max)
     gl.Texture(false)
 end
 
-local function drawAStatsBar(index, teamColor, amount, max)
+local function drawAStatsBar(index, teamColor, amount, max, playerName)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
 
@@ -1308,6 +1345,21 @@ local function drawAStatsBar(index, teamColor, amount, max)
             'cvo'
         )
     font:End()
+
+    if WG['tooltip'] then
+        local tooltipName = string.format("stat_bar_player_%s", playerName)
+        WG['tooltip'].AddTooltip(
+            tooltipName,
+            {
+                teamDecalLeft,
+                teamDecalBottom,
+                teamDecalRight,
+                teamDecalTop
+            },
+            playerName
+        )
+        table.insert(tooltipNames, tooltipName)
+    end
 end
 
 local function drawStatsBars()
@@ -1326,7 +1378,9 @@ local function drawStatsBars()
             index,
             { currentStat.colorRed, currentStat.colorGreen, currentStat.colorBlue, currentStat.colorAlpha },
             currentStat.value,
-            max)
+            max,
+            currentStat.name
+        )
         index = index + 1
     end
 end
@@ -1606,6 +1660,12 @@ local function init()
 end
 
 local function deInit()
+    if WG['tooltip'] then
+        for _, tooltipName in ipairs(tooltipNames) do
+            WG['tooltip'].RemoveTooltip(tooltipName)
+        end
+    end
+
     deleteBackgroundShader()
     deleteHeaderTooltip()
     deleteSorting()
