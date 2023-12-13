@@ -81,12 +81,13 @@ local vsModeMetricsAreaWidth, vsModeMetricsAreaHeight
 
 local headerTop, headerBottom, headerLeft, headerRight
 local metricChangeBottom
-local buttonWidgetSizeIncreaseTop, buttonWidgetSizeIncreaseBottom, buttonWidgetSizeIncreaseLeft, buttonWidgetSizeIncreaseRight
-local buttonWidgetSizeDecreaseTop, buttonWidgetSizeDecreaseBottom, buttonWidgetSizeDecreaseLeft, buttonWidgetSizeDecreaseRight
 local sortingTop, sortingBottom, sortingLeft, sortingRight
 local toggleVSModeTop, toggleVSModeBottom, toggleVSModeLeft, toggleVSModeRight
 local statsAreaTop, statsAreaBottom, statsAreaLeft, statsAreaRight
 local vsModeMetricsAreaTop, vsModeMetricsAreaBottom, vsModeMetricsAreaLeft, vsModeMetricsAreaRight
+
+local buttonWidgetSizeIncreaseDimensions
+local buttonWidgetSizeDecreaseDimensions
 
 local backgroundShader
 
@@ -685,17 +686,19 @@ local function setToggleVSModePosition()
 end
 
 local function setButtonWidgetSizeIncreasePosition()
-    buttonWidgetSizeIncreaseTop = widgetTop
-    buttonWidgetSizeIncreaseBottom = widetTop - buttonSideLength
-    buttonWidgetSizeIncreaseLeft = widgetRight - 4 * buttonSideLength
-    buttonWidgetSizeIncreaseRight = buttonWidgetSizeIncreaseLeft + buttonSideLength
+    buttonWidgetSizeIncreaseDimensions = {}
+    buttonWidgetSizeIncreaseDimensions["top"] = widgetTop
+    buttonWidgetSizeIncreaseDimensions["bottom"] = widgetTop - buttonSideLength
+    buttonWidgetSizeIncreaseDimensions["left"] = widgetRight - 4 * buttonSideLength
+    buttonWidgetSizeIncreaseDimensions["right"] = widgetRight - 3 * buttonSideLength
 end
 
 local function setButtonWidgetSizeDecreasePosition()
-    buttonWidgetSizeDecreaseTop = widgetTop
-    buttonWidgetSizeDecreaseBottom = widetTop - buttonSideLength
-    buttonWidgetSizeDecreaseLeft = widgetRight - 3 * buttonSideLength
-    buttonWidgetSizeDecreaseRight = buttonWidgetSizeDecreaseLeft + buttonSideLength
+    buttonWidgetSizeDecreaseDimensions = {}
+    buttonWidgetSizeDecreaseDimensions["top"] = widgetTop
+    buttonWidgetSizeDecreaseDimensions["bottom"] = widgetTop - buttonSideLength
+    buttonWidgetSizeDecreaseDimensions["left"] = widgetRight - 3 * buttonSideLength
+    buttonWidgetSizeDecreaseDimensions["right"] = widgetRight - 2 * buttonSideLength
 end
 
 local function setHeaderPosition()
@@ -891,10 +894,10 @@ local function updateButtonWidgetSizeIncreaseTooltip()
         WG['tooltip'].AddTooltip(
             buttonWidgetSizeIncreaseTooltipName,
             {
-                buttonWidgetSizeIncreaseLeft,
-                buttonWidgetSizeIncreaseBottom,
-                buttonWidgetSizeIncreaseRight,
-                buttonWidgetSizeIncreaseTop
+                buttonWidgetSizeIncreaseDimensions["left"],
+                buttonWidgetSizeIncreaseDimensions["bottom"],
+                buttonWidgetSizeIncreaseDimensions["right"],
+                buttonWidgetSizeIncreaseDimensions["top"]
             },
             buttonWidgetSizeIncreaseTooltipText
         )
@@ -906,10 +909,10 @@ local function updateButtonWidgetSizeDecreaseTooltip()
         WG['tooltip'].AddTooltip(
             buttonWidgetSizeDecreaseTooltipName,
             {
-                buttonWidgetSizeDecreaseLeft,
-                buttonWidgetSizeDecreaseBottom,
-                buttonWidgetSizeDecreaseRight,
-                buttonWidgetSizeDecreaseTop
+                buttonWidgetSizeDecreaseDimensions["left"],
+                buttonWidgetSizeDecreaseDimensions["bottom"],
+                buttonWidgetSizeDecreaseDimensions["right"],
+                buttonWidgetSizeDecreaseDimensions["top"]
             },
             buttonWidgetSizeDecreaseTooltipText
         )
@@ -975,10 +978,10 @@ end
 local function createButtonWidgetSizeIncrease()
     buttonWidgetSizeIncreaseBackgroundDisplayList = gl.CreateList(function ()
         WG.FlowUI.Draw.Element(
-            buttonWidgetSizeIncreaseLeft,
-            buttonWidgetSizeIncreaseBottom,
-            buttonWidgetSizeIncreaseRight,
-            buttonWidgetSizeIncreaseTop,
+            buttonWidgetSizeIncreaseDimensions["left"],
+            buttonWidgetSizeIncreaseDimensions["bottom"],
+            buttonWidgetSizeIncreaseDimensions["right"],
+            buttonWidgetSizeIncreaseDimensions["top"],
             1, 1, 1, 1,
             1, 1, 1, 1
         )
@@ -988,10 +991,10 @@ end
 local function createButtonWidgetSizeDecrease()
     buttonWidgetSizeDecreaseBackgroundDisplayList = gl.CreateList(function ()
         WG.FlowUI.Draw.Element(
-            buttonWidgetSizeDecreaseLeft,
-            buttonWidgetSizeDecreaseBottom,
-            buttonWidgetSizeDecreaseRight,
-            buttonWidgetSizeDecreaseTop,
+            buttonWidgetSizeDecreaseDimensions["left"],
+            buttonWidgetSizeDecreaseDimensions["bottom"],
+            buttonWidgetSizeDecreaseDimensions["right"],
+            buttonWidgetSizeDecreaseDimensions["top"],
             1, 1, 1, 1,
             1, 1, 1, 1
         )
@@ -1042,10 +1045,10 @@ local function drawToggleVSMode()
 end
 
 local function drawButtonWidgetSizeIncrease()
-    local buttonMiddleX = buttonWidgetSizeIncreaseLeft +
-        math.floor((buttonWidgetSizeIncreaseRight - buttonWidgetSizeIncreaseLeft) / 2)
-    local buttonMiddleY = buttonWidgetSizeIncreaseBottom +
-        math.floor((buttonWidgetSizeIncreaseTop - buttonWidgetSizeIncreaseBottom) / 2)
+    local buttonMiddleX = buttonWidgetSizeIncreaseDimensions["left"] +
+        math.floor((buttonWidgetSizeIncreaseDimensions["right"] - buttonWidgetSizeIncreaseDimensions["left"]) / 2)
+    local buttonMiddleY = buttonWidgetSizeIncreaseDimensions["bottom"] +
+        math.floor((buttonWidgetSizeIncreaseDimensions["top"] - buttonWidgetSizeIncrease["bottom"]) / 2)
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
@@ -1059,10 +1062,10 @@ local function drawButtonWidgetSizeIncrease()
 end
 
 local function drawButtonWidgetSizeDecrease()
-    local buttonMiddleX = buttonWidgetSizeDecreaseLeft +
-        math.floor((buttonWidgetSizeDecreaseRight - buttonWidgetSizeDecreaseLeft) / 2)
-    local buttonMiddleY = buttonWidgetSizeDecreaseBottom +
-        math.floor((buttonWidgetSizeDecreaseTop - buttonWidgetSizeDecreaseBottom) / 2)
+    local buttonMiddleX = buttonWidgetSizeDecreaseDimensions["left"] +
+        math.floor((buttonWidgetSizeDecreaseDimensions["right"] - buttonWidgetSizeDecreaseDimensions["left"]) / 2)
+    local buttonMiddleY = buttonWidgetSizeDecreaseDimensions["bottom"] +
+        math.floor((buttonWidgetSizeDecreaseDimensions["top"] - buttonWidgetSizeDecreaseDimensions["bottom"]) / 2)
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
@@ -1685,6 +1688,10 @@ function widget:KeyRelease(key)
     return false
 end
 
+local function isInDimensions(x, y, dimensions)
+    return (x > dimensions["left"]) and (x < dimensions["right"]) and (y > dimensions["bottom"]) and (y < dimensions["top"])
+end
+
 function widget:MousePress(x, y, button)
     if (x > headerLeft) and (x < headerRight) and (y > headerBottom) and (y < headerTop) and not metricChangeInProgress then
         metricChangeInProgress = true
@@ -1730,13 +1737,13 @@ function widget:MousePress(x, y, button)
         end
     end
 
-    if (x > buttonWidgetSizeIncreaseLeft) and (x < buttonWidgetSizeIncreaseRight) and (y > buttonWidgetSizeIncreaseBottom) and (y < buttonWidgetSizeIncreaseTop) then
+    if isInDimensions(x, y, buttonWidgetSizeIncreaseDimensions) then
         widgetScale = widgetScale + 0.1
         reInit()
         return
     end
 
-    if (x > buttonWidgetSizeDecreaseLeft) and (x < buttonWidgetSizeDecreaseRight) and (y > buttonWidgetSizeDecreaseBottom) and (y < buttonWidgetSizeDecreaseTop) then
+    if isInDimensions(x, y, buttonWidgetSizeDecreaseDimensions) then
         widgetScale = widgetScale - 0.1
         reInit()
         return
