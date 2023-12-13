@@ -1683,6 +1683,8 @@ end
 local function reInit()
     deInit()
 
+    font = WG['fonts'].getFont()
+
     init()
 end
 
