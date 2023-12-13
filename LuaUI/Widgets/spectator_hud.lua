@@ -104,7 +104,7 @@ local vsModeBackgroundDisplayLists = {}
 
 local font
 local fontSize
-local fontSizeDefault = 64
+local fontSizeDefault = 64 * 1.2
 local fontSizeMetric
 local fontSizeVSBar
 
@@ -125,8 +125,16 @@ local vsModeMetricIconPadding
 local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
 local vsModeMetricIconHeight
+local barOutlineWidth
+local barOutlineWidthDefault = 4
+local barOutlinePadding
+local barOutlinePaddingDefault = 4
+local barCornerSize
+local barCornerSizeDefault = 8
+local barOutlineCornerSize
+local barOutlineCornerSizeDefault = 8
 local teamDecalCornerSize
-local teamDecalCornerSizeDefault = 4
+local teamDecalCornerSizeDefault = 8
 local vsModeBarTextPadding
 local vsModeBarTextPaddingDefault = 20
 
@@ -652,7 +660,7 @@ local function calculateToggleVSModeSize()
 end
 
 local function calculateStatsBarSize()
-    statsBarHeight = math.floor(headerHeight * 0.80)
+    statsBarHeight = math.floor(headerHeight * 1.20)
     statsBarWidth = widgetWidth
 end
 
@@ -707,12 +715,16 @@ local function calculateWidgetSize()
     toggleVSModeIconPadding = math.floor(toggleVSModeIconPaddingDefault * scaleMultiplier)
     teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
+    barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
+    barOutlinePadding = math.floor(barOutlinePaddingDefault * scaleMultiplier)
+    barCornerSize = math.floor(barCornerSizeDefault * scaleMultiplier)
+    barOutlineCornerSize = math.floor(barOutlineCornerSizeDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
     vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
 
     fontSize = math.floor(fontSizeDefault * scaleMultiplier)
-    fontSizeMetric = math.floor(fontSize / 2)
-    fontSizeVSBar = math.floor(fontSize * 0.4)
+    fontSizeMetric = math.floor(fontSize * 0.5)
+    fontSizeVSBar = math.floor(fontSize * 0.5)
 
     widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
@@ -1070,18 +1082,19 @@ local function drawAStatsBar(index, teamColor, amount, max)
         amount,
         max
     )
+    ]]
 
     local amountText = formatResources(amount, false)
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
-    local amountBottom = teamDecalBottom
+    local amountCenter = barBottom + math.floor((barTop - barBottom) / 2)
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
             amountText,
             amountMiddle,
-            amountBottom,
+            amountCenter,
             fontSizeMetric,
-            'co'
+            'cvo'
         )
     font:End()
 end
