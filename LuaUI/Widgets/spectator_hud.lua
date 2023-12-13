@@ -169,11 +169,12 @@ local headerTooltipTitle = "Select Metric"
 local metricsAvailable = {
     { id=1, title="Metal Income", tooltip="Metal Income" },
     { id=2, title="Metal Produced", tooltip="Metal Produced" },
-    { id=3, title="Army Value", tooltip="Army Value in Metal" },
-    { id=4, title="Army Size", tooltip="Army Size in Units" },
-    { id=5, title="Damage Done", tooltip="Damage Done" },
-    { id=6, title="Damage Received", tooltip="Damage Received" },
-    { id=7, title="Damage Efficiency", tooltip="Damage Efficiency" },
+    { id=3, title="Build Power", tooltip="Build Power" },
+    { id=4, title="Army Value", tooltip="Army Value in Metal" },
+    { id=5, title="Army Size", tooltip="Army Size in Units" },
+    { id=6, title="Damage Done", tooltip="Damage Done" },
+    { id=7, title="Damage Received", tooltip="Damage Received" },
+    { id=8, title="Damage Efficiency", tooltip="Damage Efficiency" },
 }
 
 local vsMode = false
@@ -424,11 +425,36 @@ local function updateStatsMetalProduced()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalProduced
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
+            end
+        end
+    end
+end
+
+local function updateStatsBuildPower()
+    teamStats = {}
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            teamStats[allyID] = {}
+            local teamList = Spring.GetTeamList(allyID)
+            for _, teamID in ipairs(teamList) do
+                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
+                local buildPowerTotal = 0
+                local unitIDs = Spring.GetTeamUnits(teamID)
+                for i = 1, #unitIDs do
+                    local unitID = unitIDs[i]
+                    if not Spring.GetUnitIsBeingBuilt(unitID) then
+                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                        buildPowerTotal = buildPowerTotal + getUnitBuildPower(currentUnitDefID)
+                    end
                 end
+                teamStats[allyID][teamID] = {}
+                teamStats[allyID][teamID].colorRed = teamColorRed
+                teamStats[allyID][teamID].colorGreen = teamColorGreen
+                teamStats[allyID][teamID].colorBlue = teamColorBlue
+                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
+                teamStats[allyID][teamID].value = buildPowerTotal
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -647,6 +673,8 @@ local function updateStats()
             updateStatsMetalIncome()
         elseif metricChosenTitle == "Metal Produced" then
             updateStatsMetalProduced()
+        elseif metricChosenTitle == "Build Power" then
+            updateStatsBuildPower()
         elseif metricChosenTitle == "Army Value" then
             updateStatsArmyValue()
         elseif metricChosenTitle == "Army Size" then
