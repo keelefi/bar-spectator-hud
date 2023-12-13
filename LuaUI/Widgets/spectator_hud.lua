@@ -981,6 +981,84 @@ local function createVSModeBackgroudDisplayLists()
     end
 end
 
+local function drawAUnicolorBar(left, bottom, right, top, value, max, color)
+    gl.Color(0, 0, 0, 1)
+    --[[
+    gl.Rect(
+        left,
+        bottom,
+        right,
+        top + barOutlineWidth
+    )
+    gl.Rect(
+        left,
+        bottom,
+        left + barOutlineWidth,
+        top
+    )
+    gl.Rect(
+        left,
+        top - barOutlineWidth,
+        right,
+        top
+    )
+    gl.Rect(
+        left - barOutlineWidth,
+        bottom,
+        right,
+        top
+    )
+    ]]
+    --gl.Rect(left, bottom, right, top)
+    WG.FlowUI.Draw.RectRound(
+        left,
+        bottom,
+        right,
+        top,
+        barOutlineCornerSize
+    )
+
+    local scaleFactor = (right - left - 2 * (barOutlineWidth + barOutlinePadding)) / max
+
+    gl.Color(color)
+    gl.Rect(
+        left + barOutlineWidth + barOutlinePadding,
+        bottom + barOutlineWidth + barOutlinePadding,
+        left + barOutlineWidth + barOutlinePadding + math.floor(value * scaleFactor),
+        top - barOutlineWidth - barOutlinePadding
+    )
+end
+
+local function drawAMulticolorBar(left, bottom, right, top, values, colors)
+    gl.Color(0, 0, 0, 1)
+    gl.Rect(left, bottom, right, top)
+
+    local total = 0
+    for i=1,#values do
+        total = total + values[i]
+    end
+
+    local scaleFactor = (right - left - 2 * barPadding) / total
+
+    local valueStart = 0
+    local valueEnd = 0
+    for i=1,#values do
+        valueStart = valueEnd
+        valueEnd = valueStart + values[i]
+
+        local currentLeft = math.floor(left + barPadding + valueStart * scaleFactor)
+        local currentRight = math.floor(currentLeft + values[i] * scaleFactor)
+
+        gl.Color(colors[i])
+        gl.Rect(
+            currentLeft,
+            bottom + barPadding,
+            currentRight,
+            top - barPadding
+        )
+    end
+end
+
 local function drawABar(left, bottom, right, top, amount, max)
     gl.Color(1, 1, 1, 1)
     gl.Texture(images["barOutlineStart"])
@@ -1074,6 +1152,16 @@ local function drawAStatsBar(index, teamColor, amount, max)
 
     local barBottom = teamDecalBottom
     local barTop = teamDecalTop
+    drawAUnicolorBar(
+        barLeft,
+        barBottom,
+        barRight,
+        barTop,
+        amount,
+        max,
+        teamColor
+    )
+    --[[
     drawABar(
         barLeft,
         barBottom,
