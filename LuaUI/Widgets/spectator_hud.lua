@@ -703,7 +703,7 @@ local function setHeaderPosition()
     headerTop = widgetTop
     headerBottom = widgetTop - headerHeight
     headerLeft = widgetLeft
-    headerRight = widgetRight - headerWidth
+    headerRight = widgetLeft + headerWidth
 
     metricChangeBottom = headerBottom - headerHeight * getAmountOfMetrics()
 end
@@ -1039,34 +1039,34 @@ local function drawToggleVSMode()
 end
 
 local function drawButtonWidgetSizeIncrease()
-    local buttonMiddleX = buttonWidgetSizeIncreaseDimensions["left"] +
-        math.floor((buttonWidgetSizeIncreaseDimensions["right"] - buttonWidgetSizeIncreaseDimensions["left"]) / 2)
-    local buttonMiddleY = buttonWidgetSizeIncreaseDimensions["bottom"] +
-        math.floor((buttonWidgetSizeIncreaseDimensions["top"] - buttonWidgetSizeIncrease["bottom"]) / 2)
+    local buttonMiddleX = math.floor((buttonWidgetSizeIncreaseDimensions["right"] +
+        buttonWidgetSizeIncreaseDimensions["left"]) / 2)
+    local buttonMiddleY = math.floor((buttonWidgetSizeIncreaseDimensions["top"] +
+        buttonWidgetSizeIncreaseDimensions["bottom"]) / 2)
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
             "+",
             buttonMiddleX,
             buttonMiddleY,
-            fontSize,
+            fontSize - headerLabelPadding * 2,
             'cvo'
         )
     font:End()
 end
 
 local function drawButtonWidgetSizeDecrease()
-    local buttonMiddleX = buttonWidgetSizeDecreaseDimensions["left"] +
-        math.floor((buttonWidgetSizeDecreaseDimensions["right"] - buttonWidgetSizeDecreaseDimensions["left"]) / 2)
-    local buttonMiddleY = buttonWidgetSizeDecreaseDimensions["bottom"] +
-        math.floor((buttonWidgetSizeDecreaseDimensions["top"] - buttonWidgetSizeDecreaseDimensions["bottom"]) / 2)
+    local buttonMiddleX = math.floor((buttonWidgetSizeDecreaseDimensions["right"] +
+        buttonWidgetSizeDecreaseDimensions["left"]) / 2)
+    local buttonMiddleY = math.floor((buttonWidgetSizeDecreaseDimensions["top"] +
+        buttonWidgetSizeDecreaseDimensions["bottom"]) / 2)
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
-            "+",
+            "-",
             buttonMiddleX,
             buttonMiddleY,
-            fontSize,
+            fontSize - headerLabelPadding * 2,
             'cvo'
         )
     font:End()
@@ -1593,9 +1593,9 @@ local function init()
     updateSortingTooltip()
     createToggleVSMode()
     updateToggleVSModeTooltip()
-    deleteButtonWidgetSizeIncrease()
+    createButtonWidgetSizeIncrease()
     updateButtonWidgetSizeIncreaseTooltip()
-    deleteButtonWidgetSizeDecrease()
+    createButtonWidgetSizeDecrease()
     updateButtonWidgetSizeDecreaseTooltip()
     createStatsArea()
     createVSModeBackgroudDisplayLists()
@@ -1796,6 +1796,12 @@ function widget:DrawScreen()
 
         gl.CallList(toggleVSModeBackgroundDisplayList)
         drawToggleVSMode()
+
+        gl.CallList(buttonWidgetSizeIncreaseBackgroundDisplayList)
+        drawButtonWidgetSizeIncrease()
+
+        gl.CallList(buttonWidgetSizeDecreaseBackgroundDisplayList)
+        drawButtonWidgetSizeDecrease()
 
         if not vsMode then
             gl.CallList(statsAreaBackgroundDisplayList)
