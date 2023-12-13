@@ -71,6 +71,8 @@ local widgetWidth, widgetHeight
 local widgetTop, widgetBottom, widgetLeft, widgetRight
 
 local headerWidth, headerHeight
+local buttonWidgetSizeIncreaseWidth, buttonWidgetSizeIncreaseHeight
+local buttonWidgetSizeDecreaseWidth, buttonWidgetSizeDecreaseHeight
 local toggleVSModeWidth, toggleVSModeHeight
 local sortingWidth, sortingHeight
 
@@ -82,6 +84,8 @@ local vsModeMetricsAreaWidth, vsModeMetricsAreaHeight
 
 local headerTop, headerBottom, headerLeft, headerRight
 local metricChangeBottom
+local buttonWidgetSizeIncreaseTop, buttonWidgetSizeIncreaseBottom, buttonWidgetSizeIncreaseLeft, buttonWidgetSizeIncreaseRight
+local buttonWidgetSizeDecreaseTop, buttonWidgetSizeDecreaseBottom, buttonWidgetSizeDecreaseLeft, buttonWidgetSizeDecreaseRight
 local sortingTop, sortingBottom, sortingLeft, sortingRight
 local toggleVSModeTop, toggleVSModeBottom, toggleVSModeLeft, toggleVSModeRight
 local statsAreaTop, statsAreaBottom, statsAreaLeft, statsAreaRight
@@ -96,6 +100,8 @@ local headerLabelDefault = "Metal Income"
      the widget will keep on resizing depending on the header label.
 ]]
 
+local buttonWidgetSizeIncreaseBackgroundDisplayList
+local buttonWidgetSizeDecreaseBackgroundDisplayList
 local sortingBackgroundDisplayList
 local toggleVSModeBackgroundDisplayList
 
@@ -117,6 +123,10 @@ local borderPadding
 local borderPaddingDefault = 5
 local headerLabelPadding
 local headerLabelPaddingDefault = 20
+local buttonWidgetSizeIncreaseIconPadding
+local buttonWidgetSizeIncreaseIconPaddingDefault = 8
+local buttonWidgetSizeDecreaseIconPadding
+local buttonWidgetSizeDecreaseIconPaddingDefault = 8
 local sortingIconPadding
 local sortingIconPaddingDefault = 8
 local toggleVSModeIconPadding
@@ -146,6 +156,11 @@ local vsModeBarMarkerWidth, vsModeBarMarkerHeight
 local vsModeBarMarkerWidthDefault = 2
 local vsModeBarMarkerHeightDefault = 8
 --local barChunkSizeSource = 40      -- from source image
+
+local buttonWidgetSizeIncreaseTooltipName = "spectator_hud_size_increase"
+local buttonWidgetSizeIncreaseTooltipText = "Increase Widget Size"
+local buttonWidgetSizeDecreaseTooltipName = "spectator_hud_size_decrease"
+local buttonWidgetSizeDecreaseTooltipText = "Decrease Widget Size"
 
 local sortingTooltipName = "spectator_hud_sorting"
 local sortingTooltipTitle = "Sorting"
@@ -646,9 +661,9 @@ local function calculateHeaderSize()
     local headerTextHeight = font:GetTextHeight(headerLabelDefault) * fontSize
     headerHeight = math.floor(2 * borderPadding + headerTextHeight)
 
-    -- note: sorting and versus mode toggles are a squares.
-    -- therefore, we remove from header width same as twice the height.
-    headerWidth = widgetWidth - 2 * headerHeight
+    -- note: sorting, versus mode and size increase and decrease buttons are squares.
+    -- therefore, we remove from header width same as four times the height.
+    headerWidth = widgetWidth - 4 * headerHeight
 end
 
 local function calculateSortingSize()
@@ -659,6 +674,16 @@ end
 local function calculateToggleVSModeSize()
     toggleVSModeHeight = headerHeight
     toggleVSModeWidth = toggleVSModeHeight
+end
+
+local function calculateButtonWidgetSizeIncreaseSize()
+    buttonWidgetSizeIncreaseHeight = headerHeight
+    buttonWidgetSizeIncreaseWidth = buttonWidgetSizeIncreaseHeight
+end
+
+local function calculateButtonWidgetSizeDecreaseSize()
+    buttonWidgetSizeDecreaseHeight = headerHeight
+    buttonWidgetSizeDecreaseWidth = buttonWidgetSizeDecreaseHeight
 end
 
 local function calculateStatsBarSize()
@@ -685,11 +710,25 @@ local function setToggleVSModePosition()
     toggleVSModeRight = sortingLeft
 end
 
+local function setButtonWidgetSizeIncreasePosition()
+    buttonWidgetSizeIncreaseTop = widgetTop
+    buttonWidgetSizeIncreaseBottom = widetTop - buttonWidgetSizeIncreaseHeight
+    buttonWidgetSizeIncreaseLeft = widgetRight - 4 * buttonWidgetSizeIncreaseWidth
+    buttonWidgetSizeIncreaseRight = buttonWidgetSizeIncreaseLeft + buttonWidgetSizeIncreaseWidth
+end
+
+local function setButtonWidgetSizeDecreasePosition()
+    buttonWidgetSizeDecreaseTop = widgetTop
+    buttonWidgetSizeDecreaseBottom = widetTop - buttonWidgetSizeDecreaseHeight
+    buttonWidgetSizeDecreaseLeft = widgetRight - 3 * buttonWidgetSizeDecreaseWidth
+    buttonWidgetSizeDecreaseRight = buttonWidgetSizeDecreaseLeft + buttonWidgetSizeDecreaseWidth
+end
+
 local function setHeaderPosition()
     headerTop = widgetTop
     headerBottom = widgetTop - headerHeight
     headerLeft = widgetLeft
-    headerRight = widgetRight - 2 * sortingWidth
+    headerRight = widgetRight - headerWidth
 
     metricChangeBottom = headerBottom - headerHeight * getAmountOfMetrics()
 end
@@ -708,13 +747,16 @@ local function setVSModeMetricsAreaPosition()
     vsModeMetricsAreaRight = widgetRight
 end
 
-local function calculateWidgetSize()
-    local scaleMultiplier = ui_scale * widgetScale * viewScreenWidth / 3840
+local function calculateWidgetSizeScaleVariables(scaleMultiplier)
+    -- Lua has a limit in "upvalues" (60 in total) and therefore this is split
+    -- into a separate function
     distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
     borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
     headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
     sortingIconPadding = math.floor(sortingIconPaddingDefault * scaleMultiplier)
     toggleVSModeIconPadding = math.floor(toggleVSModeIconPaddingDefault * scaleMultiplier)
+    buttonWidgetSizeIncreaseIconPadding = math.floor(buttonWidgetSizeIncreaseIconPaddingDefault * scaleMultiplier)
+    buttonWidgetSizeDecreaseIconPadding = math.floor(buttonWidgetSizeDecreaseIconPaddingDefault * scaleMultiplier)
     teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
@@ -723,6 +765,11 @@ local function calculateWidgetSize()
     barOutlineCornerSize = math.floor(barOutlineCornerSizeDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
     vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
+end
+
+local function calculateWidgetSize()
+    local scaleMultiplier = ui_scale * widgetScale * viewScreenWidth / 3840
+    calculateWidgetSizeScaleVariables(scaleMultiplier)
 
     fontSize = math.floor(fontSizeDefault * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize * 0.5)
@@ -735,6 +782,8 @@ local function calculateWidgetSize()
     calculateToggleVSModeSize()
     calculateStatsBarSize()
     calculateVSModeMetricSize()
+    calculateButtonWidgetSizeIncreaseSize()
+    calculateButtonWidgetSizeDecreaseSize()
     statsAreaWidth = widgetWidth
     vsModeMetricsAreaWidth = widgetWidth
 
@@ -779,6 +828,8 @@ local function setWidgetPosition()
     setToggleVSModePosition()
     setStatsAreaPosition()
     setVSModeMetricsAreaPosition()
+    setButtonWidgetSizeIncreasePosition()
+    setButtonWidgetSizeDecreasePosition()
 end
 
 local function createBackgroundShader()
@@ -864,6 +915,36 @@ local function updateToggleVSModeTooltip()
     end
 end
 
+local function updateButtonWidgetSizeIncreaseTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].AddTooltip(
+            buttonWidgetSizeIncreaseTooltipName,
+            {
+                buttonWidgetSizeIncreaseLeft,
+                buttonWidgetSizeIncreaseBottom,
+                buttonWidgetSizeIncreaseRight,
+                buttonWidgetSizeIncreaseTop
+            },
+            buttonWidgetSizeIncreaseTooltipText
+        )
+    end
+end
+
+local function updateButtonWidgetSizeDecreaseTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].AddTooltip(
+            buttonWidgetSizeDecreaseTooltipName,
+            {
+                buttonWidgetSizeDecreaseLeft,
+                buttonWidgetSizeDecreaseBottom,
+                buttonWidgetSizeDecreaseRight,
+                buttonWidgetSizeDecreaseTop
+            },
+            buttonWidgetSizeDecreaseTooltipText
+        )
+    end
+end
+
 local function deleteHeaderTooltip()
     if WG['tooltip'] then
         WG['tooltip'].RemoveTooltip(headerTooltipName)
@@ -879,6 +960,18 @@ end
 local function deleteToggleVSModeTooltip()
     if WG['tooltip'] then
         WG['tooltip'].RemoveTooltip(toggleVSModeTooltipName)
+    end
+end
+
+local function deleteButtonWidgetSizeIncreaseTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].RemoveTooltip(buttonWidgetSizeIncreaseTooltipName)
+    end
+end
+
+local function deleteButtonWidgetSizeDecreaseTooltip()
+    if WG['tooltip'] then
+        WG['tooltip'].RemoveTooltip(buttonWidgetSizeDecreaseTooltipName)
     end
 end
 
@@ -902,6 +995,32 @@ local function createToggleVSMode()
             toggleVSModeBottom,
             toggleVSModeRight,
             toggleVSModeTop,
+            1, 1, 1, 1,
+            1, 1, 1, 1
+        )
+    end)
+end
+
+local function createButtonWidgetSizeIncrease()
+    buttonWidgetSizeIncreaseBackgroundDisplayList = gl.CreateList(function ()
+        WG.FlowUI.Draw.Element(
+            buttonWidgetSizeIncreaseLeft,
+            buttonWidgetSizeIncreaseBottom,
+            buttonWidgetSizeIncreaseRight,
+            buttonWidgetSizeIncreaseTop,
+            1, 1, 1, 1,
+            1, 1, 1, 1
+        )
+    end)
+end
+
+local function createButtonWidgetSizeDecrease()
+    buttonWidgetSizeDecreaseBackgroundDisplayList = gl.CreateList(function ()
+        WG.FlowUI.Draw.Element(
+            buttonWidgetSizeDecreaseLeft,
+            buttonWidgetSizeDecreaseBottom,
+            buttonWidgetSizeDecreaseRight,
+            buttonWidgetSizeDecreaseTop,
             1, 1, 1, 1,
             1, 1, 1, 1
         )
@@ -949,6 +1068,40 @@ local function drawToggleVSMode()
         )
         gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
+end
+
+local function drawButtonWidgetSizeIncrease()
+    local buttonMiddleX = buttonWidgetSizeIncreaseLeft +
+        math.floor((buttonWidgetSizeIncreaseRight - buttonWidgetSizeIncreaseLeft) / 2)
+    local buttonMiddleY = buttonWidgetSizeIncreaseBottom +
+        math.floor((buttonWidgetSizeIncreaseTop - buttonWidgetSizeIncreaseBottom) / 2)
+    font:Begin()
+        font:SetTextColor({ 1, 1, 1, 1 })
+        font:Print(
+            "+",
+            buttonMiddleX,
+            buttonMiddleY,
+            fontSize,
+            'cvo'
+        )
+    font:End()
+end
+
+local function drawButtonWidgetSizeDecrease()
+    local buttonMiddleX = buttonWidgetSizeDecreaseLeft +
+        math.floor((buttonWidgetSizeDecreaseRight - buttonWidgetSizeDecreaseLeft) / 2)
+    local buttonMiddleY = buttonWidgetSizeDecreaseBottom +
+        math.floor((buttonWidgetSizeDecreaseTop - buttonWidgetSizeDecreaseBottom) / 2)
+    font:Begin()
+        font:SetTextColor({ 1, 1, 1, 1 })
+        font:Print(
+            "+",
+            buttonMiddleX,
+            buttonMiddleY,
+            fontSize,
+            'cvo'
+        )
+    font:End()
 end
 
 local function createStatsArea()
@@ -1442,6 +1595,14 @@ local function deleteToggleVSMode()
     gl.DeleteList(toggleVSModeBackgroundDisplayList)
 end
 
+local function deleteButtonWidgetSizeIncrease()
+    gl.DeleteList(buttonWidgetSizeIncreaseBackgroundDisplayList)
+end
+
+local function deleteButtonWidgetSizeDecrease()
+    gl.DeleteList(buttonWidgetSizeDecreaseBackgroundDisplayList)
+end
+
 local function deleteStatsArea()
     gl.DeleteList(statsAreaBackgroundDisplayList)
 end
@@ -1464,6 +1625,10 @@ local function init()
     updateSortingTooltip()
     createToggleVSMode()
     updateToggleVSModeTooltip()
+    deleteButtonWidgetSizeIncrease()
+    updateButtonWidgetSizeIncreaseTooltip()
+    deleteButtonWidgetSizeDecrease()
+    updateButtonWidgetSizeDecreaseTooltip()
     createStatsArea()
     createVSModeBackgroudDisplayLists()
 
@@ -1479,6 +1644,10 @@ local function deInit()
     deleteSortingTooltip()
     deleteToggleVSMode()
     deleteToggleVSModeTooltip()
+    deleteButtonWidgetSizeIncrease()
+    deleteButtonWidgetSizeIncreaseTooltip()
+    deleteButtonWidgetSizeDecrease()
+    deleteButtonWidgetSizeDecreaseTooltip()
     deleteStatsArea()
     deleteVSModeBackgroudDisplayLists()
 end
@@ -1588,6 +1757,18 @@ function widget:MousePress(x, y, button)
             reInit()
             return
         end
+    end
+
+    if (x > buttonWidgetSizeIncreaseLeft) and (x < buttonWidgetSizeIncreaseRight) and (y > buttonWidgetSizeIncreaseBottom) and (y < buttonWidgetSizeIncreaseTop) then
+        widgetScale = widgetScale + 0.1
+        reInit()
+        return
+    end
+
+    if (x > buttonWidgetSizeDecreaseLeft) and (x < buttonWidgetSizeDecreaseRight) and (y > buttonWidgetSizeDecreaseBottom) and (y < buttonWidgetSizeDecreaseTop) then
+        widgetScale = widgetScale - 0.1
+        reInit()
+        return
     end
 end
 
