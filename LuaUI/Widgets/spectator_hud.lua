@@ -250,6 +250,14 @@ local function formatResources(amount, short)
     return addSpaces(round(amount))
 end
 
+local function getPlayerName(teamID)
+    local playerID = Spring.GetPlayerList(teamID)
+    if playerID and playerID[1] then
+        return select(1, Spring.GetPlayerInfo(playerID[1], false))
+    end
+    return "dead"
+end
+
 local function isArmyUnit(unitDefID)
     if UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
         return true
@@ -390,11 +398,7 @@ local function updateStatsMetalIncome()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalIncome
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -454,11 +458,7 @@ local function updateStatsArmyValue()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armyValueTotal
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -487,11 +487,7 @@ local function updateStatsArmySize()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armySizeTotal
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -517,11 +513,7 @@ local function updateStatsDamageDone()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageDealt
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -547,11 +539,7 @@ local function updateStatsDamageReceived()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageReceived
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
@@ -584,11 +572,7 @@ local function updateStatsDamageEfficiency()
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = value
-                local playerID = Spring.GetPlayerList(teamID)
-                if playerID then
-                    local playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    teamStats[allyID][teamID].name = playerName
-                end
+                teamStats[allyID][teamID].name = getPlayerName(teamID)
             end
         end
     end
