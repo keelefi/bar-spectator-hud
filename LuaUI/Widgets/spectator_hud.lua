@@ -133,8 +133,6 @@ local barOutlineWidth
 local barOutlineWidthDefault = 4
 local barOutlinePadding
 local barOutlinePaddingDefault = 4
-local barCornerSize
-local barCornerSizeDefault = 8
 local barOutlineCornerSize
 local barOutlineCornerSizeDefault = 8
 local teamDecalCornerSize
@@ -770,7 +768,6 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
     barOutlinePadding = math.floor(barOutlinePaddingDefault * scaleMultiplier)
-    barCornerSize = math.floor(barCornerSizeDefault * scaleMultiplier)
     barOutlineCornerSize = math.floor(barOutlineCornerSizeDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
     vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
