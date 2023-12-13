@@ -108,13 +108,15 @@ local fontSizeDefault = 64 * 1.2
 local fontSizeMetric
 local fontSizeVSBar
 
+local statBarHeightToHeaderHeight = 1.0
+
 local distanceFromTopBar
 local distanceFromTopBarDefault = 10
 
 local borderPadding
 local borderPaddingDefault = 5
 local headerLabelPadding
-local headerLabelPaddingDefault = 10
+local headerLabelPaddingDefault = 20
 local sortingIconPadding
 local sortingIconPaddingDefault = 8
 local toggleVSModeIconPadding
@@ -660,12 +662,12 @@ local function calculateToggleVSModeSize()
 end
 
 local function calculateStatsBarSize()
-    statsBarHeight = math.floor(headerHeight * 1.20)
+    statsBarHeight = math.floor(headerHeight * statBarHeightToHeaderHeight)
     statsBarWidth = widgetWidth
 end
 
 local function calculateVSModeMetricSize()
-    vsModeMetricHeight = math.floor(headerHeight * 1.20)
+    vsModeMetricHeight = math.floor(headerHeight * statBarHeightToHeaderHeight)
     vsModeMetricWidth = widgetWidth
 end
 
