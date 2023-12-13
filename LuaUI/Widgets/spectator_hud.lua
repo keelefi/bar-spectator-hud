@@ -154,9 +154,6 @@ local buttonWidgetSizeDecreaseTooltipName = "spectator_hud_size_decrease"
 
 local sortingTooltipName = "spectator_hud_sorting"
 local sortingTooltipTitle = "Sorting"
-local sortingPlayerTooltipText = "Sort by Player (click to change)"
-local sortingTeamTooltipText = "Sort by Team (click to change)"
-local sortingTeamAggregateTooltipText = "Sort by Team Aggregate (click to change)"
 
 local toggleVSModeTooltipName = "spectator_hud_versus_mode"
 local toggleVSModeTooltipTitle = "Versus Mode"
@@ -888,11 +885,11 @@ local function updateSortingTooltip()
     if WG['tooltip'] then
         local tooltipText
         if sortingChosen == "player" then
-            tooltipText = sortingPlayerTooltipText
+            tooltipText = "Sort by Player (click to change)"
         elseif sortingChosen == "team" then
-            tooltipText = sortingTeamTooltipText
+            tooltipText = "Sort by Team (click to change)"
         elseif sortingChosen == "teamaggregate" then
-            tooltipText = sortingTeamAggregateTooltipText
+            tooltipText = "Sort by Team Aggregate (click to change)"
         end
     
         WG['tooltip'].AddTooltip(
