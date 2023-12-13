@@ -71,10 +71,7 @@ local widgetWidth, widgetHeight
 local widgetTop, widgetBottom, widgetLeft, widgetRight
 
 local headerWidth, headerHeight
-local buttonWidgetSizeIncreaseWidth, buttonWidgetSizeIncreaseHeight
-local buttonWidgetSizeDecreaseWidth, buttonWidgetSizeDecreaseHeight
-local toggleVSModeWidth, toggleVSModeHeight
-local sortingWidth, sortingHeight
+local buttonSideLength
 
 local statsBarWidth, statsBarHeight
 local statsAreaWidth, statsAreaHeight
@@ -123,14 +120,8 @@ local borderPadding
 local borderPaddingDefault = 5
 local headerLabelPadding
 local headerLabelPaddingDefault = 20
-local buttonWidgetSizeIncreaseIconPadding
-local buttonWidgetSizeIncreaseIconPaddingDefault = 8
-local buttonWidgetSizeDecreaseIconPadding
-local buttonWidgetSizeDecreaseIconPaddingDefault = 8
-local sortingIconPadding
-local sortingIconPaddingDefault = 8
-local toggleVSModeIconPadding
-local toggleVSModeIconPaddingDefault = 8
+local buttonPadding
+local buttonPaddingDefault = 8
 local teamDecalPadding
 local teamDecalPaddingDefault = 6
 local vsModeMetricIconPadding
@@ -661,29 +652,12 @@ local function calculateHeaderSize()
     local headerTextHeight = font:GetTextHeight(headerLabelDefault) * fontSize
     headerHeight = math.floor(2 * borderPadding + headerTextHeight)
 
-    -- note: sorting, versus mode and size increase and decrease buttons are squares.
-    -- therefore, we remove from header width same as four times the height.
-    headerWidth = widgetWidth - 4 * headerHeight
-end
+    -- all buttons on the header are squares and of the same size
+    -- their sides are the same length as the header height
+    buttonSideLength = headerHeight
 
-local function calculateSortingSize()
-    sortingHeight = headerHeight   -- same height as header
-    sortingWidth = sortingHeight   -- sorting is a square box
-end
-
-local function calculateToggleVSModeSize()
-    toggleVSModeHeight = headerHeight
-    toggleVSModeWidth = toggleVSModeHeight
-end
-
-local function calculateButtonWidgetSizeIncreaseSize()
-    buttonWidgetSizeIncreaseHeight = headerHeight
-    buttonWidgetSizeIncreaseWidth = buttonWidgetSizeIncreaseHeight
-end
-
-local function calculateButtonWidgetSizeDecreaseSize()
-    buttonWidgetSizeDecreaseHeight = headerHeight
-    buttonWidgetSizeDecreaseWidth = buttonWidgetSizeDecreaseHeight
+    -- currently, we have four buttons
+    headerWidth = widgetWidth - 4 * buttonSideLength
 end
 
 local function calculateStatsBarSize()
@@ -698,30 +672,30 @@ end
 
 local function setSortingPosition()
     sortingTop = widgetTop
-    sortingBottom = widgetTop - sortingHeight
-    sortingLeft = widgetRight - sortingWidth
+    sortingBottom = widgetTop - buttonSideLength
+    sortingLeft = widgetRight - buttonSideLength
     sortingRight = widgetRight
 end
 
 local function setToggleVSModePosition()
     toggleVSModeTop = widgetTop
-    toggleVSModeBottom = widgetTop - toggleVSModeHeight
-    toggleVSModeLeft = sortingLeft - toggleVSModeWidth
+    toggleVSModeBottom = widgetTop - buttonSideLength
+    toggleVSModeLeft = sortingLeft - buttonSideLength
     toggleVSModeRight = sortingLeft
 end
 
 local function setButtonWidgetSizeIncreasePosition()
     buttonWidgetSizeIncreaseTop = widgetTop
-    buttonWidgetSizeIncreaseBottom = widetTop - buttonWidgetSizeIncreaseHeight
-    buttonWidgetSizeIncreaseLeft = widgetRight - 4 * buttonWidgetSizeIncreaseWidth
-    buttonWidgetSizeIncreaseRight = buttonWidgetSizeIncreaseLeft + buttonWidgetSizeIncreaseWidth
+    buttonWidgetSizeIncreaseBottom = widetTop - buttonSideLength
+    buttonWidgetSizeIncreaseLeft = widgetRight - 4 * buttonSideLength
+    buttonWidgetSizeIncreaseRight = buttonWidgetSizeIncreaseLeft + buttonSideLength
 end
 
 local function setButtonWidgetSizeDecreasePosition()
     buttonWidgetSizeDecreaseTop = widgetTop
-    buttonWidgetSizeDecreaseBottom = widetTop - buttonWidgetSizeDecreaseHeight
-    buttonWidgetSizeDecreaseLeft = widgetRight - 3 * buttonWidgetSizeDecreaseWidth
-    buttonWidgetSizeDecreaseRight = buttonWidgetSizeDecreaseLeft + buttonWidgetSizeDecreaseWidth
+    buttonWidgetSizeDecreaseBottom = widetTop - buttonSideLength
+    buttonWidgetSizeDecreaseLeft = widgetRight - 3 * buttonSideLength
+    buttonWidgetSizeDecreaseRight = buttonWidgetSizeDecreaseLeft + buttonSideLength
 end
 
 local function setHeaderPosition()
@@ -753,10 +727,7 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
     borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
     headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
-    sortingIconPadding = math.floor(sortingIconPaddingDefault * scaleMultiplier)
-    toggleVSModeIconPadding = math.floor(toggleVSModeIconPaddingDefault * scaleMultiplier)
-    buttonWidgetSizeIncreaseIconPadding = math.floor(buttonWidgetSizeIncreaseIconPaddingDefault * scaleMultiplier)
-    buttonWidgetSizeDecreaseIconPadding = math.floor(buttonWidgetSizeDecreaseIconPaddingDefault * scaleMultiplier)
+    buttonPadding = math.floor(buttonPadding * scaleMultiplier)
     teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
@@ -1037,10 +1008,10 @@ local function drawSorting()
         gl.Texture(images["sortingTeamAggregate"])
     end
     gl.TexRect(
-        sortingLeft + sortingIconPadding,
-        sortingBottom + sortingIconPadding,
-        sortingRight - sortingIconPadding,
-        sortingTop - sortingIconPadding
+        sortingLeft + buttonPadding,
+        sortingBottom + buttonPadding,
+        sortingRight - buttonPadding,
+        sortingTop - buttonPadding
     )
     gl.Texture(false)
 end
@@ -1050,10 +1021,10 @@ local function drawToggleVSMode()
     gl.Color(1, 1, 1, 1)
     gl.Texture(images["toggleVSMode"])
     gl.TexRect(
-        toggleVSModeLeft + toggleVSModeIconPadding,
-        toggleVSModeBottom + toggleVSModeIconPadding,
-        toggleVSModeRight - toggleVSModeIconPadding,
-        toggleVSModeTop - toggleVSModeIconPadding
+        toggleVSModeLeft + buttonPadding,
+        toggleVSModeBottom + buttonPadding,
+        toggleVSModeRight - buttonPadding,
+        toggleVSModeTop - buttonPadding
     )
     gl.Texture(false)
 
@@ -1061,10 +1032,10 @@ local function drawToggleVSMode()
         gl.Blending(GL.SRC_ALPHA, GL.ONE)
         gl.Color(1, 0.2, 0.2, 0.2)
         gl.Rect(
-            toggleVSModeLeft + toggleVSModeIconPadding,
-            toggleVSModeBottom + toggleVSModeIconPadding,
-            toggleVSModeRight - toggleVSModeIconPadding,
-            toggleVSModeTop - toggleVSModeIconPadding
+            toggleVSModeLeft + buttonPadding,
+            toggleVSModeBottom + buttonPadding,
+            toggleVSModeRight - buttonPadding,
+            toggleVSModeTop - buttonPadding
         )
         gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
