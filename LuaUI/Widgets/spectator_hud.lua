@@ -150,9 +150,7 @@ local vsModeBarMarkerHeightDefault = 8
 --local barChunkSizeSource = 40      -- from source image
 
 local buttonWidgetSizeIncreaseTooltipName = "spectator_hud_size_increase"
-local buttonWidgetSizeIncreaseTooltipText = "Increase Widget Size"
 local buttonWidgetSizeDecreaseTooltipName = "spectator_hud_size_decrease"
-local buttonWidgetSizeDecreaseTooltipText = "Decrease Widget Size"
 
 local sortingTooltipName = "spectator_hud_sorting"
 local sortingTooltipTitle = "Sorting"
@@ -899,7 +897,7 @@ local function updateButtonWidgetSizeIncreaseTooltip()
                 buttonWidgetSizeIncreaseDimensions["right"],
                 buttonWidgetSizeIncreaseDimensions["top"]
             },
-            buttonWidgetSizeIncreaseTooltipText
+            "Increase Widget Size"
         )
     end
 end
@@ -914,7 +912,7 @@ local function updateButtonWidgetSizeDecreaseTooltip()
                 buttonWidgetSizeDecreaseDimensions["right"],
                 buttonWidgetSizeDecreaseDimensions["top"]
             },
-            buttonWidgetSizeDecreaseTooltipText
+            "Decrease Widget Size"
         )
     end
 end
