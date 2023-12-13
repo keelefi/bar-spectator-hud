@@ -750,12 +750,8 @@ local function calculateWidgetSize()
     widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
     calculateHeaderSize()
-    calculateSortingSize()
-    calculateToggleVSModeSize()
     calculateStatsBarSize()
     calculateVSModeMetricSize()
-    calculateButtonWidgetSizeIncreaseSize()
-    calculateButtonWidgetSizeDecreaseSize()
     statsAreaWidth = widgetWidth
     vsModeMetricsAreaWidth = widgetWidth
 
