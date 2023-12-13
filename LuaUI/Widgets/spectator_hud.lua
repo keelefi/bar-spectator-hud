@@ -1558,8 +1558,32 @@ local function drawVSModeMetrics()
     end
 end
 
+local function mySelector(px, py, sx, sy)
+    -- modified version of WG.FlowUI.Draw.Selector
+
+    local cs = (sy-py)*0.05
+	local edgeWidth = math.max(1, math.floor((sy-py) * 0.05))
+
+	-- faint dark outline edge
+	WG.FlowUI.Draw.RectRound(px-edgeWidth, py-edgeWidth, sx+edgeWidth, sy+edgeWidth, cs*1.5, 1,1,1,1, { 0,0,0,0.5 })
+	-- body
+	WG.FlowUI.Draw.RectRound(px, py, sx, sy, cs, 1,1,1,1, { 0.05, 0.05, 0.05, 0.8 }, { 0.15, 0.15, 0.15, 0.8 })
+
+	-- highlight
+	gl.Blending(GL.SRC_ALPHA, GL.ONE)
+	-- top
+	WG.FlowUI.Draw.RectRound(px, sy-(edgeWidth*3), sx, sy, edgeWidth, 1,1,1,1, { 1,1,1,0 }, { 1,1,1,0.035 })
+	-- bottom
+	WG.FlowUI.Draw.RectRound(px, py, sx, py+(edgeWidth*3), edgeWidth, 1,1,1,1, { 1,1,1,0.025 }, { 1,1,1,0  })
+	gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+
+	-- button
+	WG.FlowUI.Draw.RectRound(sx-(sy-py), py, sx, sy, cs, 1, 1, 1, 1, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.14 })
+	--WG.FlowUI.Draw.Button(sx-(sy-py), py, sx, sy, 1, 1, 1, 1, 1,1,1,1, nil, { 1, 1, 1, 0.1 }, nil, cs)
+end
+
 local function drawMetricChange()
-    WG.FlowUI.Draw.Selector(
+    mySelector(
         headerLeft,
         metricChangeBottom,
         headerRight,
