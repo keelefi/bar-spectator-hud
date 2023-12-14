@@ -59,8 +59,6 @@ where
 * Every bar has a text on top showing approximate value as textual represenation
 ]]
 
---local inSpecMode = false
---local isReplay = Spring.IsReplay()
 local haveFullView = false
 
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
@@ -143,12 +141,10 @@ local teamDecalCornerSizeDefault = 8
 local vsModeBarTextPadding
 local vsModeBarTextPaddingDefault = 20
 
-local barChunkSize
 local vsModeBarChunkSize
 local vsModeBarMarkerWidth, vsModeBarMarkerHeight
 local vsModeBarMarkerWidthDefault = 2
 local vsModeBarMarkerHeightDefault = 8
---local barChunkSizeSource = 40      -- from source image
 
 local tooltipNames = {}
 
@@ -810,7 +806,6 @@ local function calculateWidgetSize()
     statsAreaHeight = statsBarHeight * statBarAmount
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
     vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
-    barChunkSize = math.floor(teamDecalHeight / 2)
     vsModeBarChunkSize = math.floor(vsModeMetricIconHeight / 2)
     vsModeBarMarkerWidth = math.floor(vsModeBarMarkerWidthDefault * scaleMultiplier)
     vsModeBarMarkerHeight = math.floor(vsModeBarMarkerHeightDefault * scaleMultiplier)
@@ -1152,33 +1147,6 @@ end
 
 local function drawAUnicolorBar(left, bottom, right, top, value, max, color)
     gl.Color(0, 0, 0, 1)
-    --[[
-    gl.Rect(
-        left,
-        bottom,
-        right,
-        top + barOutlineWidth
-    )
-    gl.Rect(
-        left,
-        bottom,
-        left + barOutlineWidth,
-        top
-    )
-    gl.Rect(
-        left,
-        top - barOutlineWidth,
-        right,
-        top
-    )
-    gl.Rect(
-        left - barOutlineWidth,
-        bottom,
-        right,
-        top
-    )
-    ]]
-    --gl.Rect(left, bottom, right, top)
     WG.FlowUI.Draw.RectRound(
         left,
         bottom,
@@ -1228,71 +1196,6 @@ local function drawAMulticolorBar(left, bottom, right, top, values, colors)
     end
 end
 
-local function drawABar(left, bottom, right, top, amount, max)
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barOutlineStart"])
-    gl.TexRect(
-        left,
-        bottom,
-        left + barChunkSize,
-        top
-    )
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barOutlineMiddle"])
-    gl.TexRect(
-        left + barChunkSize,
-        bottom,
-        right - barChunkSize,
-        top
-    )
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barOutlineEnd"])
-    gl.TexRect(
-        right - barChunkSize,
-        bottom,
-        right,
-        top
-    )
-
-    local right2 = left + math.floor((right - left) * amount / max)
-
-    -- make sure we have a least some pixels in the bar
-    if (right2 - left) < (barChunkSize * 2) then
-        right2 = left + barChunkSize * 2
-    end
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barProgressStart"])
-    gl.TexRect(
-        left,
-        bottom,
-        left + barChunkSize,
-        top
-    )
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barProgressMiddle"])
-    gl.TexRect(
-        left + barChunkSize,
-        bottom,
-        right2 - barChunkSize,
-        top
-    )
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barProgressEnd"])
-    gl.TexRect(
-        right2 - barChunkSize,
-        bottom,
-        right2,
-        top
-    )
-
-    gl.Texture(false)
-end
-
 local function drawAStatsBar(index, teamColor, amount, max, playerName)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
@@ -1330,16 +1233,6 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName)
         max,
         teamColor
     )
-    --[[
-    drawABar(
-        barLeft,
-        barBottom,
-        barRight,
-        barTop,
-        amount,
-        max
-    )
-    ]]
 
     local amountText = formatResources(amount, false)
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
