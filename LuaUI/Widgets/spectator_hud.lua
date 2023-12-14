@@ -19,17 +19,20 @@ In this mode only mexes and metal converters are considered. Reclaim is ignored.
 
 2. Metal produced view
 
-3. Army value view
+3. Build power view
+Adds up all the build power of the player or team
+
+4. Army value view
 Shows army metal cost.
 
-4. Army size view
+5. Army size view
 Shows army size in units.
 
-5. Damage done view
+6. Damage done view
 
-6. Damage received view
+7. Damage received view
 
-7. Damage efficiency view
+8. Damage efficiency view
 
 For each statistic, you can decide if you want to sort per team or per player
 
