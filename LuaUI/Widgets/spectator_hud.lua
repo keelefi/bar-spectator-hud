@@ -301,6 +301,7 @@ local function getMetricChosen()
             return currentMetric
         end
     end
+    return nil
 end
 
 local function getAmountOfVSModeMetrics()
@@ -1587,6 +1588,9 @@ local function init()
     createVSModeBackgroudDisplayLists()
 
     vsModeEnabled = getAmountOfAllyTeams() == 2
+    if not vsModeEnabled then
+        vsMode = false
+    end
 
     updateStats()
 end
@@ -1813,4 +1817,35 @@ function widget:DrawScreen()
             drawMetricChange()
         end
     gl.PopMatrix()
+end
+
+function widget:GetConfigData()
+    return {
+        widgetScale = widgetScale,
+        metricChosenID = metricChosenID,
+        sortingChosen = sortingChosen,
+        vsMode = vsMode,
+    }
+end
+
+function widget:SetConfigData(data)
+    if data.widgetScale then
+        widgetScale = data.widgetScale
+    end
+    if data.metricChosenID then
+        metricChosenID = data.metricChosenID
+        local metricChosen = getMetricChosen(metricChosenID)
+        if metricChosen then
+            headerLabel = metricChosen.title
+        else
+            metricChosen = 1
+            headerLabel = "Metal Income"
+        end
+    end
+    if data.sortingChosen then
+        sortingChosen = data.sortingChosen
+    end
+    if data.vsMode then
+        vsMode = data.vsMode
+    end
 end
