@@ -256,7 +256,7 @@ local function getPlayerName(teamID)
 end
 
 local function isArmyUnit(unitDefID)
-    if UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
+    if unitDefID and UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
         return true
     else
         return false
@@ -264,7 +264,7 @@ local function isArmyUnit(unitDefID)
 end
 
 local function getUnitBuildPower(unitDefID)
-    if UnitDefs[unitDefID].buildSpeed then
+    if unitDefID and UnitDefs[unitDefID].buildSpeed then
         return UnitDefs[unitDefID].buildSpeed
     else
         return 0
@@ -469,9 +469,11 @@ local function updateStatsArmyValue()
                 for i = 1, #unitIDs do
                     local unitID = unitIDs[i]
                     local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                    local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
-                    if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
-                        armyValueTotal = armyValueTotal + currentUnitMetalCost
+                    if currentUnitDefID then
+                        local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
+                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
+                            armyValueTotal = armyValueTotal + currentUnitMetalCost
+                        end
                     end
                 end
                 teamStats[allyID][teamID] = {}
@@ -635,12 +637,14 @@ local function updateStatsVSMode()
                 for i = 1, #unitIDs do
                     local unitID = unitIDs[i]
                     local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                    local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
-                    if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
-                        teamArmyValueTotal = teamArmyValueTotal + currentUnitMetalCost
-                    end
-                    if not Spring.GetUnitIsBeingBuilt(unitID) then
-                        teamBuildPower = teamBuildPower + getUnitBuildPower(currentUnitDefID)
+                    if currentUnitDefID then
+                        local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
+                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
+                            teamArmyValueTotal = teamArmyValueTotal + currentUnitMetalCost
+                        end
+                        if not Spring.GetUnitIsBeingBuilt(unitID) then
+                            teamBuildPower = teamBuildPower + getUnitBuildPower(currentUnitDefID)
+                        end
                     end
                 end
                 metalIncomeTotal = metalIncomeTotal + teamMetalIncome
