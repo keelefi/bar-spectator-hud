@@ -64,14 +64,13 @@ local haveFullView = false
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
 local widgetScale = 0.8
 
+local widgetDimensions = {}
 local headerDimensions = {}
 
 local topBarPosition
 local topBarShowButtons
 
 local viewScreenWidth, viewScreenHeight
-local widgetWidth, widgetHeight
-local widgetTop, widgetBottom, widgetLeft, widgetRight
 
 local buttonSideLength
 
@@ -700,70 +699,70 @@ local function calculateHeaderSize()
     buttonSideLength = headerDimensions.height
 
     -- currently, we have four buttons
-    headerDimensions.width = widgetWidth - 4 * buttonSideLength
+    headerDimensions.width = widgetDimensions.width - 4 * buttonSideLength
 end
 
 local function calculateStatsBarSize()
     statsBarHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
-    statsBarWidth = widgetWidth
+    statsBarWidth = widgetDimensions.width
 end
 
 local function calculateVSModeMetricSize()
     vsModeMetricHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
-    vsModeMetricWidth = widgetWidth
+    vsModeMetricWidth = widgetDimensions.width
 end
 
 local function setSortingPosition()
-    sortingTop = widgetTop
-    sortingBottom = widgetTop - buttonSideLength
-    sortingLeft = widgetRight - buttonSideLength
-    sortingRight = widgetRight
+    sortingTop = widgetDimensions.top
+    sortingBottom = widgetDimensions.top - buttonSideLength
+    sortingLeft = widgetDimensions.right - buttonSideLength
+    sortingRight = widgetDimensions.right
 end
 
 local function setToggleVSModePosition()
-    toggleVSModeTop = widgetTop
-    toggleVSModeBottom = widgetTop - buttonSideLength
+    toggleVSModeTop = widgetDimensions.top
+    toggleVSModeBottom = widgetDimensions.top - buttonSideLength
     toggleVSModeLeft = sortingLeft - buttonSideLength
     toggleVSModeRight = sortingLeft
 end
 
 local function setButtonWidgetSizeIncreasePosition()
     buttonWidgetSizeIncreaseDimensions = {}
-    buttonWidgetSizeIncreaseDimensions["top"] = widgetTop
-    buttonWidgetSizeIncreaseDimensions["bottom"] = widgetTop - buttonSideLength
-    buttonWidgetSizeIncreaseDimensions["left"] = widgetRight - 4 * buttonSideLength
-    buttonWidgetSizeIncreaseDimensions["right"] = widgetRight - 3 * buttonSideLength
+    buttonWidgetSizeIncreaseDimensions["top"] = widgetDimensions.top
+    buttonWidgetSizeIncreaseDimensions["bottom"] = widgetDimensions.top - buttonSideLength
+    buttonWidgetSizeIncreaseDimensions["left"] = widgetDimensions.right - 4 * buttonSideLength
+    buttonWidgetSizeIncreaseDimensions["right"] = widgetDimensions.right - 3 * buttonSideLength
 end
 
 local function setButtonWidgetSizeDecreasePosition()
     buttonWidgetSizeDecreaseDimensions = {}
-    buttonWidgetSizeDecreaseDimensions["top"] = widgetTop
-    buttonWidgetSizeDecreaseDimensions["bottom"] = widgetTop - buttonSideLength
-    buttonWidgetSizeDecreaseDimensions["left"] = widgetRight - 3 * buttonSideLength
-    buttonWidgetSizeDecreaseDimensions["right"] = widgetRight - 2 * buttonSideLength
+    buttonWidgetSizeDecreaseDimensions["top"] = widgetDimensions.top
+    buttonWidgetSizeDecreaseDimensions["bottom"] = widgetDimensions.top - buttonSideLength
+    buttonWidgetSizeDecreaseDimensions["left"] = widgetDimensions.right - 3 * buttonSideLength
+    buttonWidgetSizeDecreaseDimensions["right"] = widgetDimensions.right - 2 * buttonSideLength
 end
 
 local function setHeaderPosition()
-    headerDimensions.top = widgetTop
-    headerDimensions.bottom = widgetTop - headerDimensions.height
-    headerDimensions.left = widgetLeft
-    headerDimensions.right = widgetLeft + headerDimensions.width
+    headerDimensions.top = widgetDimensions.top
+    headerDimensions.bottom = widgetDimensions.top - headerDimensions.height
+    headerDimensions.left = widgetDimensions.left
+    headerDimensions.right = widgetDimensions.left + headerDimensions.width
 
     metricChangeBottom = headerDimensions.bottom - headerDimensions.height * getAmountOfMetrics()
 end
 
 local function setStatsAreaPosition()
-    statsAreaTop = widgetTop - headerDimensions.height
-    statsAreaBottom = widgetBottom
-    statsAreaLeft = widgetLeft
-    statsAreaRight = widgetRight
+    statsAreaTop = widgetDimensions.top - headerDimensions.height
+    statsAreaBottom = widgetDimensions.bottom
+    statsAreaLeft = widgetDimensions.left
+    statsAreaRight = widgetDimensions.right
 end
 
 local function setVSModeMetricsAreaPosition()
-    vsModeMetricsAreaTop = widgetTop - headerDimensions.height
-    vsModeMetricsAreaBottom = widgetBottom
-    vsModeMetricsAreaLeft = widgetLeft
-    vsModeMetricsAreaRight = widgetRight
+    vsModeMetricsAreaTop = widgetDimensions.top - headerDimensions.height
+    vsModeMetricsAreaBottom = widgetDimensions.bottom
+    vsModeMetricsAreaLeft = widgetDimensions.left
+    vsModeMetricsAreaRight = widgetDimensions.right
 end
 
 local function calculateWidgetSizeScaleVariables(scaleMultiplier)
@@ -790,13 +789,13 @@ local function calculateWidgetSize()
     fontSizeMetric = math.floor(fontSize * 0.5)
     fontSizeVSBar = math.floor(fontSize * 0.5)
 
-    widgetWidth = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
+    widgetDimensions.width = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
     calculateHeaderSize()
     calculateStatsBarSize()
     calculateVSModeMetricSize()
-    statsAreaWidth = widgetWidth
-    vsModeMetricsAreaWidth = widgetWidth
+    statsAreaWidth = widgetDimensions.width
+    vsModeMetricsAreaWidth = widgetDimensions.width
 
     local statBarAmount
     if sortingChosen == "teamaggregate" then
@@ -814,9 +813,9 @@ local function calculateWidgetSize()
     vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
 
     if not vsMode then
-        widgetHeight = headerDimensions.height + statsAreaHeight
+        widgetDimensions.height = headerDimensions.height + statsAreaHeight
     else
-        widgetHeight = headerDimensions.height + vsModeMetricsAreaHeight
+        widgetDimensions.height = headerDimensions.height + vsModeMetricsAreaHeight
     end
 end
 
@@ -825,13 +824,13 @@ local function setWidgetPosition()
     if WG['topbar'] then
         local topBarPosition = WG['topbar'].GetPosition()
         local topBarShowButtons = WG['topbar'].getShowButtons()
-        widgetTop = topBarShowButtons and (topBarPosition[2] - distanceFromTopBar) or topBarPosition[4]
+        widgetDimensions.top = topBarShowButtons and (topBarPosition[2] - distanceFromTopBar) or topBarPosition[4]
     else
-        widgetTop = viewScreenHeight
+        widgetDimensions.top = viewScreenHeight
     end
-    widgetBottom = widgetTop - widgetHeight
-    widgetRight = viewScreenWidth
-    widgetLeft = widgetRight - widgetWidth
+    widgetDimensions.bottom = widgetDimensions.top - widgetDimensions.height
+    widgetDimensions.right = viewScreenWidth
+    widgetDimensions.left = widgetDimensions.right - widgetDimensions.width
 
     setHeaderPosition()
     setSortingPosition()
@@ -846,10 +845,10 @@ local function createBackgroundShader()
     if WG['guishader'] then
         backgroundShader = gl.CreateList(function ()
             WG.FlowUI.Draw.RectRound(
-                widgetLeft,
-                widgetBottom,
-                widgetRight,
-                widgetTop,
+                widgetDimensions.left,
+                widgetDimensions.bottom,
+                widgetDimensions.right,
+                widgetDimensions.top,
                 WG.FlowUI.elementCorner)
         end)
         WG['guishader'].InsertDlist(backgroundShader, 'spectator_hud', true)
@@ -1568,6 +1567,7 @@ end
 local function init()
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
 
+    widgetDimensions = {}
     headerDimensions = {}
 
     calculateWidgetSize()
