@@ -64,6 +64,8 @@ local haveFullView = false
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
 local widgetScale = 0.8
 
+local headerDimensions = {}
+
 local topBarPosition
 local topBarShowButtons
 
@@ -71,7 +73,6 @@ local viewScreenWidth, viewScreenHeight
 local widgetWidth, widgetHeight
 local widgetTop, widgetBottom, widgetLeft, widgetRight
 
-local headerWidth, headerHeight
 local buttonSideLength
 
 local statsBarWidth, statsBarHeight
@@ -80,7 +81,6 @@ local statsAreaWidth, statsAreaHeight
 local vsModeMetricWidth, vsModeMetricHeight
 local vsModeMetricsAreaWidth, vsModeMetricsAreaHeight
 
-local headerTop, headerBottom, headerLeft, headerRight
 local metricChangeBottom
 local sortingTop, sortingBottom, sortingLeft, sortingRight
 local toggleVSModeTop, toggleVSModeBottom, toggleVSModeLeft, toggleVSModeRight
@@ -689,23 +689,23 @@ end
 
 local function calculateHeaderSize()
     local headerTextHeight = font:GetTextHeight(headerLabelDefault) * fontSize
-    headerHeight = math.floor(2 * borderPadding + headerTextHeight)
+    headerDimensions.height = math.floor(2 * borderPadding + headerTextHeight)
 
     -- all buttons on the header are squares and of the same size
     -- their sides are the same length as the header height
-    buttonSideLength = headerHeight
+    buttonSideLength = headerDimensions.height
 
     -- currently, we have four buttons
-    headerWidth = widgetWidth - 4 * buttonSideLength
+    headerDimensions.width = widgetWidth - 4 * buttonSideLength
 end
 
 local function calculateStatsBarSize()
-    statsBarHeight = math.floor(headerHeight * statBarHeightToHeaderHeight)
+    statsBarHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
     statsBarWidth = widgetWidth
 end
 
 local function calculateVSModeMetricSize()
-    vsModeMetricHeight = math.floor(headerHeight * statBarHeightToHeaderHeight)
+    vsModeMetricHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
     vsModeMetricWidth = widgetWidth
 end
 
@@ -740,23 +740,23 @@ local function setButtonWidgetSizeDecreasePosition()
 end
 
 local function setHeaderPosition()
-    headerTop = widgetTop
-    headerBottom = widgetTop - headerHeight
-    headerLeft = widgetLeft
-    headerRight = widgetLeft + headerWidth
+    headerDimensions.top = widgetTop
+    headerDimensions.bottom = widgetTop - headerDimensions.height
+    headerDimensions.left = widgetLeft
+    headerDimensions.right = widgetLeft + headerDimensions.width
 
-    metricChangeBottom = headerBottom - headerHeight * getAmountOfMetrics()
+    metricChangeBottom = headerDimensions.bottom - headerDimensions.height * getAmountOfMetrics()
 end
 
 local function setStatsAreaPosition()
-    statsAreaTop = widgetTop - headerHeight
+    statsAreaTop = widgetTop - headerDimensions.height
     statsAreaBottom = widgetBottom
     statsAreaLeft = widgetLeft
     statsAreaRight = widgetRight
 end
 
 local function setVSModeMetricsAreaPosition()
-    vsModeMetricsAreaTop = widgetTop - headerHeight
+    vsModeMetricsAreaTop = widgetTop - headerDimensions.height
     vsModeMetricsAreaBottom = widgetBottom
     vsModeMetricsAreaLeft = widgetLeft
     vsModeMetricsAreaRight = widgetRight
@@ -810,9 +810,9 @@ local function calculateWidgetSize()
     vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
 
     if not vsMode then
-        widgetHeight = headerHeight + statsAreaHeight
+        widgetHeight = headerDimensions.height + statsAreaHeight
     else
-        widgetHeight = headerHeight + vsModeMetricsAreaHeight
+        widgetHeight = headerDimensions.height + vsModeMetricsAreaHeight
     end
 end
 
@@ -854,10 +854,10 @@ end
 
 local function drawHeader()
     WG.FlowUI.Draw.Element(
-        headerLeft,
-        headerBottom,
-        headerRight,
-        headerTop,
+        headerDimensions.left,
+        headerDimensions.bottom,
+        headerDimensions.right,
+        headerDimensions.top,
         1, 1, 1, 1,
         1, 1, 1, 1
     )
@@ -866,8 +866,8 @@ local function drawHeader()
     font:SetTextColor({ 1, 1, 1, 1 })
     font:Print(
         headerLabel,
-        headerLeft + borderPadding + headerLabelPadding,
-        headerBottom + borderPadding + headerLabelPadding,
+        headerDimensions.left + borderPadding + headerLabelPadding,
+        headerDimensions.bottom + borderPadding + headerLabelPadding,
         fontSize - headerLabelPadding * 2,
         'o'
     )
@@ -880,7 +880,7 @@ local function updateHeaderTooltip()
         local tooltipText = metricChosen.tooltip
         WG['tooltip'].AddTooltip(
             headerTooltipName,
-            { headerLeft, headerBottom, headerRight, headerTop },
+            { headerDimensions.left, headerDimensions.bottom, headerDimensions.right, headerDimensions.top },
             tooltipText,
             nil,
             headerTooltipTitle
@@ -1486,22 +1486,25 @@ end
 
 local function drawMetricChange()
     mySelector(
-        headerLeft,
+        headerDimensions.left,
         metricChangeBottom,
-        headerRight,
-        headerBottom
+        headerDimensions.right,
+        headerDimensions.bottom
     )
 
     -- TODO: this is not working, find out why
     local mouseX, mouseY = Spring.GetMouseState()
-    if (mouseX > headerLeft) and (mouseX < headerRight) and (mouseY > headerBottom) and (mouseY < metricChangeBottom) then
-        local mouseHovered = math.floor((mouseY - metricChangeBottom) / headerHeight)
-        local highlightBottom = metricChangeBottom + mouseHovered * headerHeight
-        local highlightTop = highlightBottom + headerHeight
+    if (mouseX > headerDimensions.left) and
+            (mouseX < headerDimensions.right) and
+            (mouseY > headerDimensions.bottom) and
+            (mouseY < metricChangeBottom) then
+        local mouseHovered = math.floor((mouseY - metricChangeBottom) / headerDimensions.height)
+        local highlightBottom = metricChangeBottom + mouseHovered * headerDimensions.height
+        local highlightTop = highlightBottom + headerDimensions.height
         WG.FlowUI.Draw.SelectHighlight(
-            headerLeft,
+            headerDimensions.left,
             highlightBottom,
-            headerRight,
+            headerDimensions.right,
             highlighTop
         )
     end
@@ -1510,9 +1513,9 @@ local function drawMetricChange()
         local distanceFromTop = 0
         local amountOfMetrics = getAmountOfMetrics()
         for _, currentMetric in ipairs(metricsAvailable) do
-            local textLeft = headerLeft + borderPadding + headerLabelPadding
+            local textLeft = headerDimensions.left + borderPadding + headerLabelPadding
             local textBottom = metricChangeBottom + borderPadding + headerLabelPadding +
-                (amountOfMetrics - distanceFromTop - 1) * headerHeight
+                (amountOfMetrics - distanceFromTop - 1) * headerDimensions.height
             font:Print(
                 currentMetric.title,
                 textLeft,
@@ -1560,6 +1563,8 @@ end
 
 local function init()
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
+
+    headerDimensions = {}
 
     calculateWidgetSize()
     setWidgetPosition()
@@ -1672,16 +1677,17 @@ local function isInDimensions(x, y, dimensions)
 end
 
 function widget:MousePress(x, y, button)
-    if (x > headerLeft) and (x < headerRight) and (y > headerBottom) and (y < headerTop) and not metricChangeInProgress then
+    if isInDimensions(x, y, headerDimensions) and not metricChangeInProgress then
         metricChangeInProgress = true
         return
     end
 
     if metricChangeInProgress then
-        if (x > headerLeft) and (x < headerRight) and (y > metricChangeBottom) and (y < headerTop) then
+        if (x > headerDimensions.left) and (x < headerDimensions.right) and
+                (y > metricChangeBottom) and (y < headerDimensions.top) then
             -- no change if user pressed header
-            if (y < headerBottom) then
-                local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerHeight)
+            if (y < headerDimensions.bottom) then
+                local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerDimensions.height)
                 setMetricChosen(metricPressed)
                 if vsMode then
                     vsMode = false
