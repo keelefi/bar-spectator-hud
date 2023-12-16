@@ -129,6 +129,7 @@ local vsModeMetricIconPadding
 local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
 local vsModeMetricIconHeight
+local vsModeMetricIconWidth
 local barOutlineWidth
 local barOutlineWidthDefault = 4
 local barOutlinePadding
@@ -179,13 +180,13 @@ local vsMode = false
 local vsModeEnabled = false
 
 local vsModeMetrics = {
-    { id=1, icon="iconM", metric="Metal Income"},
-    { id=2, icon="iconE", metric="Energy Income"},
-    { id=3, icon="iconBP", metric="Build Power"},
-    { id=4, icon="iconM", metric="Metal Produced"},
-    { id=5, icon="iconE", metric="Energy Produced"},
-    { id=6, icon="iconA", metric="Army Value"},
-    { id=7, icon="iconD", metric="Damage Dealt"},
+    { id=1, text="M/s", metric="Metal Income", tooltip="Metal Income" },
+    { id=2, text="E/s", metric="Energy Income", tooltip="Energy Income" },
+    { id=3, text="BP", metric="Build Power", tooltip="Build Power" },
+    { id=4, text="MP", metric="Metal Produced", tooltip="Metal Produced" },
+    { id=5, text="EP", metric="Energy Produced", tooltip="Energy Produced" },
+    { id=6, text="AV", metric="Army Value", tooltip="Army Value (in metal)" },
+    { id=7, text="Dmg", metric="Damage Dealt", tooltip="Damage Dealt" },
 }
 
 local metricChosenID = 1
@@ -206,11 +207,6 @@ local images = {
     barProgressMiddleBlue = "LuaUI/Images/spectator_hud/bar-progress-middle-blue.png",
     barProgressEndBlue = "LuaUI/Images/spectator_hud/bar-progress-end-blue.png",
     toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
-    iconM = "LuaUI/Images/spectator_hud/button-m.png",
-    iconE = "LuaUI/Images/spectator_hud/button-e.png",
-    iconBP = "LuaUI/Images/spectator_hud/button-bp.png",
-    iconA = "LuaUI/Images/spectator_hud/button-a.png",
-    iconD = "LuaUI/Images/spectator_hud/button-d.png",
 }
 
 local function round(num, idp)
@@ -807,6 +803,7 @@ local function calculateWidgetSize()
     statsAreaHeight = statsBarHeight * statBarAmount
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
     vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
+    vsModeMetricIconWidth = vsModeMetricIconHeight * 2
     vsModeBarChunkSize = math.floor(vsModeMetricIconHeight / 2)
     vsModeBarMarkerWidth = math.floor(vsModeBarMarkerWidthDefault * scaleMultiplier)
     vsModeBarMarkerHeight = math.floor(vsModeBarMarkerHeightDefault * scaleMultiplier)
@@ -954,6 +951,27 @@ local function updateButtonWidgetSizeDecreaseTooltip()
     end
 end
 
+local function updateVSModeTooltips()
+    local iconLeft = vsModeMetricsAreaLeft + borderPadding + vsModeMetricIconPadding
+    local iconRight = iconLeft + vsModeMetricIconWidth
+
+    if WG['tooltip'] then
+        for _, vsModeMetric in ipairs(vsModeMetrics) do
+            local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+            local top = bottom + vsModeMetricHeight
+
+            local iconBottom = bottom + borderPadding + vsModeMetricIconPadding
+            local iconTop = iconBottom + vsModeMetricIconHeight
+
+            WG['tooltip'].AddTooltip(
+                string.format("spectator_hud_vsmode_%d", vsModeMetric.id),
+                { iconLeft, iconBottom, iconRight, iconTop },
+                vsModeMetric.tooltip
+            )
+        end
+    end
+end
+
 local function deleteHeaderTooltip()
     if WG['tooltip'] then
         WG['tooltip'].RemoveTooltip(headerTooltipName)
@@ -981,6 +999,14 @@ end
 local function deleteButtonWidgetSizeDecreaseTooltip()
     if WG['tooltip'] then
         WG['tooltip'].RemoveTooltip(buttonWidgetSizeDecreaseTooltipName)
+    end
+end
+
+local function deleteVSModeTooltips()
+    if WG['tooltip'] then
+        for _, vsModeMetric in ipairs(vsModeMetrics) do
+            WG['tooltip'].RemoveTooltip(string.format("spectator_hud_vsmode_%d", vsModeMetric.id))
+        end
     end
 end
 
@@ -1415,19 +1441,24 @@ local function drawVSModeMetrics()
         local top = bottom + vsModeMetricHeight
 
         local iconLeft = vsModeMetricsAreaLeft + borderPadding + vsModeMetricIconPadding
-        local iconRight = iconLeft + vsModeMetricIconHeight
+        local iconRight = iconLeft + vsModeMetricIconWidth
         local iconBottom = bottom + borderPadding + vsModeMetricIconPadding
         local iconTop = iconBottom + vsModeMetricIconHeight
 
-        local iconImage = images[vsModeMetric.icon]
+        local iconHCenter = math.floor((iconRight + iconLeft) / 2)
+        local iconVCenter = math.floor((iconTop + iconBottom) / 2)
+        local iconText = vsModeMetric.text
+
         gl.Color(1, 1, 1, 1)
-        gl.Texture(iconImage)
-        gl.TexRect(
-            iconLeft,
-            iconBottom,
-            iconRight,
-            iconTop
-        )
+        font:Begin()
+            font:Print(
+                iconText,
+                iconHCenter,
+                iconVCenter,
+                fontSizeVSBar,
+                'cvo'
+            )
+        font:End()
 
         local valueRed, valueBlue
         if vsModeMetric.metric == "Metal Income" then
@@ -1591,6 +1622,10 @@ local function init()
         vsMode = false
     end
 
+    if vsMode then
+        updateVSModeTooltips()
+    end
+
     updateStats()
 end
 
@@ -1621,6 +1656,10 @@ local function reInit()
     font = WG['fonts'].getFont()
 
     init()
+end
+
+local function tearDownVSMode()
+    deleteVSModeTooltips()
 end
 
 local function processPlayerCountChanged()
@@ -1698,6 +1737,7 @@ function widget:MousePress(x, y, button)
                 setMetricChosen(metricPressed)
                 if vsMode then
                     vsMode = false
+                    tearDownVSMode()
                     reInit()
                 end
                 updateStats()
@@ -1724,6 +1764,9 @@ function widget:MousePress(x, y, button)
     if vsModeEnabled then
         if (x > toggleVSModeLeft) and (x < toggleVSModeRight) and (y > toggleVSModeBottom) and (y < toggleVSModeTop) then
             vsMode = not vsMode
+            if not vsMode then
+                tearDownVSMode()
+            end
             reInit()
             return
         end
