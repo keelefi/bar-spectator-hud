@@ -824,8 +824,7 @@ local function setWidgetPosition()
     -- widget is placed underneath topbar
     if WG['topbar'] then
         local topBarPosition = WG['topbar'].GetPosition()
-        local topBarShowButtons = WG['topbar'].getShowButtons()
-        widgetDimensions.top = topBarShowButtons and (topBarPosition[2] - distanceFromTopBar) or topBarPosition[4]
+        widgetDimensions.top = topBarPosition[2] - distanceFromTopBar
     else
         widgetDimensions.top = viewScreenHeight
     end
@@ -1767,17 +1766,6 @@ function widget:Update(dt)
         else
             deInit()
             return
-        end
-    end
-
-    if haveFullView then
-        if WG['topbar'] then
-            local topBarShowButtonsOld = topBarShowButtons
-            topBarShowButtons = WG['topbar'].getShowButtons()
-            if topBarShowButtons ~= topBarShowButtonsOld then
-                reInit()
-                return
-            end
         end
     end
 end
