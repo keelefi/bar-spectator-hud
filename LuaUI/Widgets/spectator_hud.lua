@@ -1615,6 +1615,7 @@ local function drawMetricChange()
     end
 
     font:Begin()
+        font:SetTextColor({ 1, 1, 1, 1 })
         local distanceFromTop = 0
         local amountOfMetrics = getAmountOfMetrics()
         for _, currentMetric in ipairs(metricsAvailable) do
