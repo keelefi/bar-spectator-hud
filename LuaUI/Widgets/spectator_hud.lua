@@ -1367,6 +1367,7 @@ local function drawVSBar(valueRed, valueBlue, left, bottom, right, top)
         end
     end
 
+    gl.Color(1, 1, 1, 1)
     gl.Texture(images["barProgressStartRed"])
     gl.TexRect(
         left,
@@ -1485,8 +1486,8 @@ local function drawVSModeMetrics()
         local iconVCenter = math.floor((iconTop + iconBottom) / 2)
         local iconText = vsModeMetric.text
 
-        gl.Color(1, 1, 1, 1)
         font:Begin()
+            font:SetTextColor({ 1, 1, 1, 1 })
             font:Print(
                 iconText,
                 iconHCenter,
