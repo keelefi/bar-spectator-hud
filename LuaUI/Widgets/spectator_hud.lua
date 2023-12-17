@@ -126,7 +126,7 @@ local buttonPaddingDefault = 8
 local teamDecalPadding
 local teamDecalPaddingDefault = 6
 local teamDecalShrink
-local teamDecalShrinkDefault = 4
+local teamDecalShrinkDefault = 6
 local vsModeMetricIconPadding
 local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
