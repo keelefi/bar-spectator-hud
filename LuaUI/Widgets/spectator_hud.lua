@@ -142,6 +142,8 @@ local teamDecalCornerSize
 local teamDecalCornerSizeDefault = 8
 local vsModeBarTextPadding
 local vsModeBarTextPaddingDefault = 20
+local vsModeDeltaPadding
+local vsModeDeltaPaddingDefault = 20
 
 local vsModeBarChunkSize
 local vsModeBarMarkerWidth, vsModeBarMarkerHeight
@@ -809,6 +811,7 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     barOutlineCornerSize = math.floor(barOutlineCornerSizeDefault * scaleMultiplier)
     teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
     vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
+    vsModeDeltaPadding = math.floor(vsModeDeltaPaddingDefault * scaleMultiplier)
 end
 
 local function calculateWidgetSize()
@@ -1439,6 +1442,7 @@ local function drawVSBar(valueRed, valueBlue, left, bottom, right, top)
         )
     end
 
+    -- print the team values at the edges of the bars
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
@@ -1459,6 +1463,29 @@ local function drawVSBar(valueRed, valueBlue, left, bottom, right, top)
             fontSizeVSBar,
             --'vO'
             'rvO'
+        )
+    font:End()
+
+    -- print the delta value in the middle
+    local valueDelta = math.abs(valueRed - valueBlue)
+    local posX = divider + (valueRed > valueBlue and -vsModeDeltaPadding or vsModeDeltaPadding)
+    if (valueRed > (valueBlue * 3)) then
+        posX = left + barLength * 0.75
+    elseif (valueBlue > (valueRed * 3)) then
+        posX = left + barLength * 0.25
+    end
+    font:Begin()
+        if valueRed > valueBlue then
+            font:SetTextColor({ 0, 1, 1, 1 })
+        else
+            font:SetTextColor({ 1, 1, 0, 1 })
+        end
+        font:Print(
+            formatResources(valueDelta, true),
+            posX,
+            bottom + math.floor((top - bottom) / 2),
+            fontSizeVSBar,
+            valueRed > valueBlue and 'rvO' or 'vO'
         )
     font:End()
 end
