@@ -108,47 +108,54 @@ local vsModeBackgroundDisplayLists = {}
 
 local font
 local fontSize
-local fontSizeDefault = 64 * 1.2
 local fontSizeMetric
 local fontSizeVSBar
 
+-- TODO: this constant need to be scaled with widget size, screen size and ui_scale
 local statBarHeightToHeaderHeight = 1.0
 
 local distanceFromTopBar
-local distanceFromTopBarDefault = 10
 
 local borderPadding
-local borderPaddingDefault = 5
 local headerLabelPadding
-local headerLabelPaddingDefault = 20
 local buttonPadding
-local buttonPaddingDefault = 8
 local teamDecalPadding
-local teamDecalPaddingDefault = 6
 local teamDecalShrink
-local teamDecalShrinkDefault = 6
 local vsModeMetricIconPadding
-local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
 local vsModeMetricIconHeight
 local vsModeMetricIconWidth
 local barOutlineWidth
-local barOutlineWidthDefault = 4
 local barOutlinePadding
-local barOutlinePaddingDefault = 4
 local barOutlineCornerSize
-local barOutlineCornerSizeDefault = 8
 local teamDecalCornerSize
-local teamDecalCornerSizeDefault = 8
 local vsModeBarTextPadding
-local vsModeBarTextPaddingDefault = 20
 local vsModeDeltaPadding
-local vsModeDeltaPaddingDefault = 20
 
 local vsModeBarChunkSize
 local vsModeBarMarkerWidth, vsModeBarMarkerHeight
-local vsModeBarMarkerWidthDefault = 2
-local vsModeBarMarkerHeightDefault = 8
+
+local defaults = {
+    fontSize = 64 * 1.2,
+
+    distanceFromTopBar = 10,
+
+    borderPadding = 5,
+    headerLabelPadding = 20,
+    buttonPadding = 8,
+    teamDecalPadding = 6,
+    teamDecalShrink = 6,
+    vsModeMetricIconPadding = 6,
+    barOutlineWidth = 4,
+    barOutlinePadding = 4,
+    barOutlineCornerSize = 8,
+    teamDecalCornerSize = 8,
+    vsModeBarTextPadding = 20,
+    vsModeDeltaPadding = 20,
+
+    vsModeBarMarkerWidth = 2,
+    vsModeBarMarkerHeight = 8,
+}
 
 local tooltipNames = {}
 
@@ -799,26 +806,26 @@ end
 local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     -- Lua has a limit in "upvalues" (60 in total) and therefore this is split
     -- into a separate function
-    distanceFromTopBar = math.floor(distanceFromTopBarDefault * scaleMultiplier)
-    borderPadding = math.floor(borderPaddingDefault * scaleMultiplier)
-    headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
-    buttonPadding = math.floor(buttonPaddingDefault * scaleMultiplier)
-    teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
-    teamDecalShrink = math.floor(teamDecalShrinkDefault * scaleMultiplier)
-    vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
-    barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
-    barOutlinePadding = math.floor(barOutlinePaddingDefault * scaleMultiplier)
-    barOutlineCornerSize = math.floor(barOutlineCornerSizeDefault * scaleMultiplier)
-    teamDecalCornerSize = math.floor(teamDecalCornerSizeDefault * scaleMultiplier)
-    vsModeBarTextPadding = math.floor(vsModeBarTextPaddingDefault * scaleMultiplier)
-    vsModeDeltaPadding = math.floor(vsModeDeltaPaddingDefault * scaleMultiplier)
+    distanceFromTopBar = math.floor(defaults.distanceFromTopBar * scaleMultiplier)
+    borderPadding = math.floor(defaults.borderPadding * scaleMultiplier)
+    headerLabelPadding = math.floor(defaults.headerLabelPadding * scaleMultiplier)
+    buttonPadding = math.floor(defaults.buttonPadding * scaleMultiplier)
+    teamDecalPadding = math.floor(defaults.teamDecalPadding * scaleMultiplier)
+    teamDecalShrink = math.floor(defaults.teamDecalShrink * scaleMultiplier)
+    vsModeMetricIconPadding = math.floor(defaults.vsModeMetricIconPadding * scaleMultiplier)
+    barOutlineWidth = math.floor(defaults.barOutlineWidth * scaleMultiplier)
+    barOutlinePadding = math.floor(defaults.barOutlinePadding * scaleMultiplier)
+    barOutlineCornerSize = math.floor(defaults.barOutlineCornerSize * scaleMultiplier)
+    teamDecalCornerSize = math.floor(defaults.teamDecalCornerSize * scaleMultiplier)
+    vsModeBarTextPadding = math.floor(defaults.vsModeBarTextPadding * scaleMultiplier)
+    vsModeDeltaPadding = math.floor(defaults.vsModeDeltaPadding * scaleMultiplier)
 end
 
 local function calculateWidgetSize()
     local scaleMultiplier = ui_scale * widgetScale * viewScreenWidth / 3840
     calculateWidgetSizeScaleVariables(scaleMultiplier)
 
-    fontSize = math.floor(fontSizeDefault * scaleMultiplier)
+    fontSize = math.floor(defaults.fontSize * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize * 0.5)
     fontSizeVSBar = math.floor(fontSize * 0.5)
 
@@ -841,8 +848,8 @@ local function calculateWidgetSize()
     vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
     vsModeMetricIconWidth = vsModeMetricIconHeight * 2
     vsModeBarChunkSize = math.floor(vsModeMetricIconHeight / 2)
-    vsModeBarMarkerWidth = math.floor(vsModeBarMarkerWidthDefault * scaleMultiplier)
-    vsModeBarMarkerHeight = math.floor(vsModeBarMarkerHeightDefault * scaleMultiplier)
+    vsModeBarMarkerWidth = math.floor(defaults.vsModeBarMarkerWidth * scaleMultiplier)
+    vsModeBarMarkerHeight = math.floor(defaults.vsModeBarMarkerHeight * scaleMultiplier)
 
     vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
 
