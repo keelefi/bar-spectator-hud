@@ -426,6 +426,7 @@ local function updateStatsMetalIncome()
                 teamStats[allyID][teamID].value = metalIncome
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -453,6 +454,7 @@ local function updateStatsMetalProduced()
                 teamStats[allyID][teamID].value = metalProduced
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -483,6 +485,7 @@ local function updateStatsBuildPower()
                 teamStats[allyID][teamID].value = buildPowerTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -516,6 +519,7 @@ local function updateStatsArmyValue()
                 teamStats[allyID][teamID].value = armyValueTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -546,6 +550,7 @@ local function updateStatsArmySize()
                 teamStats[allyID][teamID].value = armySizeTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -573,6 +578,7 @@ local function updateStatsDamageDone()
                 teamStats[allyID][teamID].value = damageDealt
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -600,6 +606,7 @@ local function updateStatsDamageReceived()
                 teamStats[allyID][teamID].value = damageReceived
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -634,6 +641,7 @@ local function updateStatsDamageEfficiency()
                 teamStats[allyID][teamID].value = value
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
+                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -1214,8 +1222,14 @@ local function createVSModeBackgroudDisplayLists()
     end
 end
 
-local function drawAUnicolorBar(left, bottom, right, top, value, max, color)
-    gl.Color(0, 0, 0, 1)
+local function darkerColor(red, green, blue, alpha, factor)
+    return {red * factor, green * factor, blue * factor, 0.2}
+end
+
+local function drawAUnicolorBar(left, bottom, right, top, value, max, color, captainID)
+    local captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha = Spring.GetTeamColor(captainID)
+    local captainColorDarker = darkerColor(captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha, 0.7)
+    gl.Color(captainColorDarker[1], captainColorDarker[2], captainColorDarker[3], captainColorDarker[4])
     WG.FlowUI.Draw.RectRound(
         left,
         bottom,
@@ -1265,7 +1279,7 @@ local function drawAMulticolorBar(left, bottom, right, top, values, colors)
     end
 end
 
-local function drawAStatsBar(index, teamColor, amount, max, playerName, hasCommander)
+local function drawAStatsBar(index, teamColor, amount, max, playerName, hasCommander, captainID)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
 
@@ -1302,7 +1316,8 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
         barTop,
         amount,
         max,
-        teamColor
+        teamColor,
+        captainID
     )
 
     local amountText = formatResources(amount, false)
@@ -1353,7 +1368,8 @@ local function drawStatsBars()
             currentStat.value,
             max,
             currentStat.name,
-            currentStat.hasCommander
+            currentStat.hasCommander,
+            currentStat.captainID
         )
         index = index + 1
     end
