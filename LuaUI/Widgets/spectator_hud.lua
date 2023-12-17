@@ -125,6 +125,8 @@ local buttonPadding
 local buttonPaddingDefault = 8
 local teamDecalPadding
 local teamDecalPaddingDefault = 6
+local teamDecalShrink
+local teamDecalShrinkDefault = 4
 local vsModeMetricIconPadding
 local vsModeMetricIconPaddingDefault = 6
 local teamDecalHeight
@@ -209,6 +211,13 @@ local images = {
     toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
 }
 
+local comDefs = {}
+for udefID, def in ipairs(UnitDefs) do
+	if def.customParams.iscommander then
+		comDefs[udefID] = true
+	end
+end
+
 local function round(num, idp)
     local mult = 10 ^ (idp or 0)
     return math.floor(num * mult + 0.5) / mult
@@ -248,6 +257,21 @@ local function getPlayerName(teamID)
         return select(1, Spring.GetPlayerInfo(playerID[1], false))
     end
     return "dead"
+end
+
+local function teamHasCommander(teamID)
+    local hasCom = false
+	for commanderDefID, _ in pairs(comDefs) do
+		if Spring.GetTeamUnitDefCount(teamID, commanderDefID) > 0 then
+			local unitList = Spring.GetTeamUnitsByDefs(teamID, commanderDefID)
+			for i = 1, #unitList do
+				if not Spring.GetUnitIsDead(unitList[i]) then
+					hasCom = true
+				end
+			end
+		end
+	end
+	return hasCom
 end
 
 local function isArmyUnit(unitDefID)
@@ -392,6 +416,7 @@ local function updateStatsMetalIncome()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalIncome
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -418,6 +443,7 @@ local function updateStatsMetalProduced()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = metalProduced
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -447,6 +473,7 @@ local function updateStatsBuildPower()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = buildPowerTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -479,6 +506,7 @@ local function updateStatsArmyValue()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armyValueTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -508,6 +536,7 @@ local function updateStatsArmySize()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = armySizeTotal
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -534,6 +563,7 @@ local function updateStatsDamageDone()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageDealt
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -560,6 +590,7 @@ local function updateStatsDamageReceived()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = damageReceived
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -593,6 +624,7 @@ local function updateStatsDamageEfficiency()
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = value
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
             end
         end
     end
@@ -770,6 +802,7 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     headerLabelPadding = math.floor(headerLabelPaddingDefault * scaleMultiplier)
     buttonPadding = math.floor(buttonPaddingDefault * scaleMultiplier)
     teamDecalPadding = math.floor(teamDecalPaddingDefault * scaleMultiplier)
+    teamDecalShrink = math.floor(teamDecalShrinkDefault * scaleMultiplier)
     vsModeMetricIconPadding = math.floor(vsModeMetricIconPaddingDefault * scaleMultiplier)
     barOutlineWidth = math.floor(barOutlineWidthDefault * scaleMultiplier)
     barOutlinePadding = math.floor(barOutlinePaddingDefault * scaleMultiplier)
@@ -1222,7 +1255,7 @@ local function drawAMulticolorBar(left, bottom, right, top, values, colors)
     end
 end
 
-local function drawAStatsBar(index, teamColor, amount, max, playerName)
+local function drawAStatsBar(index, teamColor, amount, max, playerName, hasCommander)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
 
@@ -1234,11 +1267,13 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName)
     local teamDecalLeft = statsAreaLeft + borderPadding + teamDecalPadding
     local teamDecalRight = teamDecalLeft + teamDecalSize
 
+    local shrink = hasCommander and 0 or teamDecalShrink
+
     WG.FlowUI.Draw.RectRound(
-        teamDecalLeft,
-        teamDecalBottom,
-        teamDecalRight,
-        teamDecalTop,
+        teamDecalLeft + shrink,
+        teamDecalBottom + shrink,
+        teamDecalRight - shrink,
+        teamDecalTop - shrink,
         teamDecalCornerSize,
         1, 1, 1, 1,
         teamColor
@@ -1307,7 +1342,8 @@ local function drawStatsBars()
             { currentStat.colorRed, currentStat.colorGreen, currentStat.colorBlue, currentStat.colorAlpha },
             currentStat.value,
             max,
-            currentStat.name
+            currentStat.name,
+            currentStat.hasCommander
         )
         index = index + 1
     end
