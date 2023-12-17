@@ -1240,13 +1240,38 @@ local function drawAUnicolorBar(left, bottom, right, top, value, max, color, cap
 
     local scaleFactor = (right - left - 2 * (barOutlineWidth + barOutlinePadding)) / max
 
+    local leftInner = left + barOutlineWidth + barOutlinePadding
+    local bottomInner = bottom + barOutlineWidth + barOutlinePadding
+    local rightInner = left + barOutlineWidth + barOutlinePadding + math.floor(value * scaleFactor)
+    local topInner = top - barOutlineWidth - barOutlinePadding
+
     gl.Color(color)
-    gl.Rect(
-        left + barOutlineWidth + barOutlinePadding,
-        bottom + barOutlineWidth + barOutlinePadding,
-        left + barOutlineWidth + barOutlinePadding + math.floor(value * scaleFactor),
-        top - barOutlineWidth - barOutlinePadding
-    )
+    gl.Rect(leftInner, bottomInner, rightInner, topInner)
+
+    local function addDarkGradient(left, bottom, right, top)
+        gl.Blending(GL.SRC_ALPHA, GL.ONE)
+
+        local middle = math.floor((right + left) / 2)
+
+        gl.Color(0, 0, 0, 0.15)
+        gl.Vertex(left, bottom)
+        gl.Vertex(left, top)
+
+        gl.Color(0, 0, 0, 0.3)
+        gl.Vertex(middle, top)
+        gl.Vertex(middle, bottom)
+
+        gl.Color(0, 0, 0, 0.3)
+        gl.Vertex(middle, bottom)
+        gl.Vertex(middle, top)
+
+        gl.Color(0, 0, 0, 0.15)
+        gl.Vertex(right, top)
+        gl.Vertex(right, bottom)
+
+        gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+    end
+    gl.BeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
 end
 
 local function drawAMulticolorBar(left, bottom, right, top, values, colors)
