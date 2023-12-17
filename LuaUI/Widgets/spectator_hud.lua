@@ -398,6 +398,7 @@ local function sortStats()
             allyTotals[index].colorBlue = teamColorBlue
             allyTotals[index].colorAlpha = teamColorAlpha
             allyTotals[index].value = currentAllyTotal
+            allyTotals[index].captainID = allyTeamCaptainID
             index = index + 1
         end
         table.sort(allyTotals, function(left, right)
