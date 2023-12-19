@@ -410,239 +410,102 @@ local function sortStats()
     return result
 end
 
-local function updateStatsMetalIncome()
+local function updateStatsNormalMode(statToUpdate)
     teamStats = {}
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
         if allyID ~= gaiaAllyID then
             teamStats[allyID] = {}
             local teamList = Spring.GetTeamList(allyID)
             for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local metalIncome = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
                 teamStats[allyID][teamID] = {}
+
+                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
                 teamStats[allyID][teamID].colorRed = teamColorRed
                 teamStats[allyID][teamID].colorGreen = teamColorGreen
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = metalIncome
+
                 teamStats[allyID][teamID].name = getPlayerName(teamID)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
                 teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
 
-local function updateStatsMetalProduced()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local historyMax = Spring.GetTeamStatsHistory(teamID)
-                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local metalProduced = 0
-                if statsHistory and #statsHistory > 0 then
-                    metalProduced = statsHistory[1].metalProduced
-                end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = metalProduced
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsBuildPower()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local buildPowerTotal = 0
-                local unitIDs = Spring.GetTeamUnits(teamID)
-                for i = 1, #unitIDs do
-                    local unitID = unitIDs[i]
-                    if not Spring.GetUnitIsBeingBuilt(unitID) then
-                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                        buildPowerTotal = buildPowerTotal + getUnitBuildPower(currentUnitDefID)
+                local value = 0
+                if statToUpdate == "Metal Income" then
+                    value = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
+                elseif statToUpdate == "Metal Produced" then
+                    local historyMax = Spring.GetTeamStatsHistory(teamID)
+                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+                    if statsHistory and #statsHistory > 0 then
+                        value = statsHistory[1].metalProduced
                     end
-                end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = buildPowerTotal
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsArmyValue()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local armyValueTotal = 0
-                local unitIDs = Spring.GetTeamUnits(teamID)
-                for i = 1, #unitIDs do
-                    local unitID = unitIDs[i]
-                    local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                    if currentUnitDefID then
-                        local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
-                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
-                            armyValueTotal = armyValueTotal + currentUnitMetalCost
+                elseif statToUpdate == "Build Power" then
+                    local buildPowerTotal = 0
+                    local unitIDs = Spring.GetTeamUnits(teamID)
+                    for i = 1, #unitIDs do
+                        local unitID = unitIDs[i]
+                        if not Spring.GetUnitIsBeingBuilt(unitID) then
+                            local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                            buildPowerTotal = buildPowerTotal + getUnitBuildPower(currentUnitDefID)
                         end
                     end
-                end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = armyValueTotal
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsArmySize()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local unitIDs = Spring.GetTeamUnits(teamID)
-                local armySizeTotal = 0
-                for i = 1, #unitIDs do
-                    local unitID = unitIDs[i]
-                    local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                    if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID)then
-                        armySizeTotal = armySizeTotal + 1
+                    value = buildPowerTotal
+                elseif statToUpdate == "Army Value" then
+                    local armyValueTotal = 0
+                    local unitIDs = Spring.GetTeamUnits(teamID)
+                    for i = 1, #unitIDs do
+                        local unitID = unitIDs[i]
+                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                        if currentUnitDefID then
+                            local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
+                            if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
+                                armyValueTotal = armyValueTotal + currentUnitMetalCost
+                            end
+                        end
                     end
+                    value = armyValueTotal
+                elseif statToUpdate == "Army Size" then
+                    local unitIDs = Spring.GetTeamUnits(teamID)
+                    local armySizeTotal = 0
+                    for i = 1, #unitIDs do
+                        local unitID = unitIDs[i]
+                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID)then
+                            armySizeTotal = armySizeTotal + 1
+                        end
+                    end
+                    value = armySizeTotal
+                elseif statToUpdate == "Damage Done" then
+                    local historyMax = Spring.GetTeamStatsHistory(teamID)
+                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+                    local damageDealt = 0
+                    if statsHistory and #statsHistory > 0 then
+                        damageDealt = statsHistory[1].damageDealt
+                    end
+                    value = damageDealt
+                elseif statToUpdate == "Damage Received" then
+                    local historyMax = Spring.GetTeamStatsHistory(teamID)
+                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+                    local damageReceived = 0
+                    if statsHistory and #statsHistory > 0 then
+                        damageReceived = statsHistory[1].damageReceived
+                    end
+                    value = damageReceived
+                elseif statToUpdate == "Damage Efficiency" then
+                    local historyMax = Spring.GetTeamStatsHistory(teamID)
+                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+                    local damageDealt = 0
+                    local damageReceived = 0
+                    if statsHistory and #statsHistory > 0 then
+                        damageDealt = statsHistory[1].damageDealt
+                        damageReceived = statsHistory[1].damageReceived
+                    end
+                    if damageReceived < 1 then
+                        -- avoid dividing by 0
+                        damageReceived = 1
+                    end
+                    value = math.floor(damageDealt * 100 / damageReceived)
                 end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = armySizeTotal
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsDamageDone()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local historyMax = Spring.GetTeamStatsHistory(teamID)
-                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageDealt = 0
-                if statsHistory and #statsHistory > 0 then
-                    damageDealt = statsHistory[1].damageDealt
-                end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = damageDealt
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsDamageReceived()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local historyMax = Spring.GetTeamStatsHistory(teamID)
-                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageReceived = 0
-                if statsHistory and #statsHistory > 0 then
-                    damageReceived = statsHistory[1].damageReceived
-                end
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
-                teamStats[allyID][teamID].value = damageReceived
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
-            end
-        end
-    end
-end
-
-local function updateStatsDamageEfficiency()
-    teamStats = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                local historyMax = Spring.GetTeamStatsHistory(teamID)
-                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local damageDealt = 0
-                local damageReceived = 0
-                if statsHistory and #statsHistory > 0 then
-                    damageDealt = statsHistory[1].damageDealt
-                    damageReceived = statsHistory[1].damageReceived
-                end
-                if damageReceived < 1 then
-                    -- avoid dividing by 0
-                    damageReceived = 1
-                end
-                local value = math.floor(damageDealt * 100 / damageReceived)
-                teamStats[allyID][teamID] = {}
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
                 teamStats[allyID][teamID].value = value
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
             end
         end
     end
@@ -715,23 +578,7 @@ end
 local function updateStats()
     if not vsMode then
         local metricChosenTitle = getMetricChosen().title
-        if metricChosenTitle == "Metal Income" then
-            updateStatsMetalIncome()
-        elseif metricChosenTitle == "Metal Produced" then
-            updateStatsMetalProduced()
-        elseif metricChosenTitle == "Build Power" then
-            updateStatsBuildPower()
-        elseif metricChosenTitle == "Army Value" then
-            updateStatsArmyValue()
-        elseif metricChosenTitle == "Army Size" then
-            updateStatsArmySize()
-        elseif metricChosenTitle == "Damage Done" then
-            updateStatsDamageDone()
-        elseif metricChosenTitle == "Damage Received" then
-            updateStatsDamageReceived()
-        elseif metricChosenTitle == "Damage Efficiency" then
-            updateStatsDamageEfficiency()
-        end
+        updateStatsNormalMode(metricChosenTitle)
     else
         updateStatsVSMode()
     end
