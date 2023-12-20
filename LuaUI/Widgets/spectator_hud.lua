@@ -110,6 +110,7 @@ local font
 local fontSize
 local fontSizeMetric
 local fontSizeVSBar
+local fontSizeVSModeKnob
 
 -- TODO: this constant need to be scaled with widget size, screen size and ui_scale
 local statBarHeightToHeaderHeight = 1.0
@@ -131,12 +132,30 @@ local barOutlineCornerSize
 local teamDecalCornerSize
 local vsModeBarTextPadding
 local vsModeDeltaPadding
+local vsModeKnobHeight
+local vsModeKnobWidth
+local vsModeMetricKnobPadding
+local vsModeKnobOutline
+local vsModeKnobCornerSize
+local vsModeBarTriangleSize
 
-local vsModeBarChunkSize
 local vsModeBarMarkerWidth, vsModeBarMarkerHeight
+
+local vsModeBarPadding
+local vsModeLineHeight
+
+-- note: the different between defaults and constants is that defaults are adjusted according to
+-- screen size, widget size and ui scale. On the other hand, constants do not change.
+local constants = {
+    darkerBarsFactor = 0.6,
+    darkerLinesFactor = 0.9,
+    darkerSideKnobsFactor = 0.8,
+    darkerMiddleKnobFactor = 0.9,
+}
 
 local defaults = {
     fontSize = 64 * 1.2,
+    fontSizeVSModeKnob = 32,
 
     distanceFromTopBar = 10,
 
@@ -152,9 +171,16 @@ local defaults = {
     teamDecalCornerSize = 8,
     vsModeBarTextPadding = 20,
     vsModeDeltaPadding = 20,
+    vsModeMetricKnobPadding = 20,
+    vsModeKnobOutline =  4,
+    vsModeKnobCornerSize = 5,
+    vsModeBarTriangleSize = 5,
 
     vsModeBarMarkerWidth = 2,
     vsModeBarMarkerHeight = 8,
+
+    vsModeBarPadding = 8,
+    vsModeLineHeight = 12,
 }
 
 local tooltipNames = {}
@@ -191,13 +217,13 @@ local vsMode = false
 local vsModeEnabled = false
 
 local vsModeMetrics = {
-    { id=1, text="M/s", metric="Metal Income", tooltip="Metal Income" },
-    { id=2, text="E/s", metric="Energy Income", tooltip="Energy Income" },
-    { id=3, text="BP", metric="Build Power", tooltip="Build Power" },
-    { id=4, text="MP", metric="Metal Produced", tooltip="Metal Produced" },
-    { id=5, text="EP", metric="Energy Produced", tooltip="Energy Produced" },
-    { id=6, text="AV", metric="Army Value", tooltip="Army Value (in metal)" },
-    { id=7, text="Dmg", metric="Damage Dealt", tooltip="Damage Dealt" },
+    { id=1, key="metalIncome", text="M/s", metric="Metal Income", tooltip="Metal Income" },
+    { id=2, key="energyIncome", text="E/s", metric="Energy Income", tooltip="Energy Income" },
+    { id=3, key="buildPower", text="BP", metric="Build Power", tooltip="Build Power" },
+    { id=4, key="metalProduced", text="MP", metric="Metal Produced", tooltip="Metal Produced" },
+    { id=5, key="energyProduced", text="EP", metric="Energy Produced", tooltip="Energy Produced" },
+    { id=6, key="armyValue", text="AV", metric="Army Value", tooltip="Army Value (in metal)" },
+    { id=7, key="damageDone", text="Dmg", metric="Damage Dealt", tooltip="Damage Dealt" },
 }
 
 local metricChosenID = 1
@@ -210,13 +236,6 @@ local images = {
     sortingPlayer = "LuaUI/Images/spectator_hud/sorting-player.png",
     sortingTeam = "LuaUI/Images/spectator_hud/sorting-team.png",
     sortingTeamAggregate = "LuaUI/Images/spectator_hud/sorting-plus.png",
-    barOutlineStart = "LuaUI/Images/spectator_hud/bar-outline-start.png",
-    barOutlineMiddle = "LuaUI/Images/spectator_hud/bar-outline-middle.png",
-    barOutlineEnd = "LuaUI/Images/spectator_hud/bar-outline-end.png",
-    barProgressStartRed = "LuaUI/Images/spectator_hud/bar-progress-start-red.png",
-    barProgressMiddleRed = "LuaUI/Images/spectator_hud/bar-progress-middle-red.png",
-    barProgressMiddleBlue = "LuaUI/Images/spectator_hud/bar-progress-middle-blue.png",
-    barProgressEndBlue = "LuaUI/Images/spectator_hud/bar-progress-end-blue.png",
     toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
 }
 
@@ -225,6 +244,28 @@ for udefID, def in ipairs(UnitDefs) do
 	if def.customParams.iscommander then
 		comDefs[udefID] = true
 	end
+end
+
+local function makeDarkerColor(color, factor, alpha)
+    local newColor = {}
+
+    if factor then
+        newColor[1] = color[1] * factor
+        newColor[2] = color[2] * factor
+        newColor[3] = color[3] * factor
+    else
+        newColor[1] = color[1]
+        newColor[2] = color[2]
+        newColor[3] = color[3]
+    end
+
+    if alpha then
+        newColor[4] = alpha
+    else
+        newColor[4] = color[4]
+    end
+
+    return newColor
 end
 
 local function round(num, idp)
@@ -239,13 +280,13 @@ local tenMillion = 10 * million
 local function formatResources(amount, short)
     if short then
         if amount >= tenMillion then
-            return string.format("%d M", amount / million)
+            return string.format("%dM", amount / million)
         elseif amount >= million then
-            return string.format("%.1f M", amount / million)
+            return string.format("%.1fM", amount / million)
         elseif amount >= tenThousand then
-            return string.format("%d k", amount / thousand)
+            return string.format("%dk", amount / thousand)
         elseif amount >= thousand then
-            return string.format("%.1f k", amount / thousand)
+            return string.format("%.1fk", amount / thousand)
         else
             return string.format("%d", amount)
         end
@@ -528,6 +569,8 @@ local function updateStatsVSMode()
             local armyValueTotal = 0
             local damageDoneTotal = 0
             for _, teamID in ipairs(teamList) do
+                vsModeStats[allyID][teamID] = {}
+                vsModeStats[allyID][teamID].color = { Spring.GetTeamColor(teamID) }
                 local historyMax = Spring.GetTeamStatsHistory(teamID)
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
                 local teamMetalIncome = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
@@ -556,12 +599,19 @@ local function updateStatsVSMode()
                         end
                     end
                 end
+                vsModeStats[allyID][teamID].metalIncome = teamMetalIncome
                 metalIncomeTotal = metalIncomeTotal + teamMetalIncome
+                vsModeStats[allyID][teamID].energyIncome = teamEnergyIncome
                 energyIncomeTotal = energyIncomeTotal + teamEnergyIncome
+                vsModeStats[allyID][teamID].buildPower = teamBuildPower
                 buildPowerTotal = buildPowerTotal + teamBuildPower
+                vsModeStats[allyID][teamID].metalProduced = teamMetalProduced
                 metalProducedTotal = metalProducedTotal + teamMetalProduced
+                vsModeStats[allyID][teamID].energyProduced = teamEnergyProduced
                 energyProducedTotal = energyProducedTotal + teamEnergyProduced
+                vsModeStats[allyID][teamID].armyValue = teamArmyValueTotal
                 armyValueTotal = armyValueTotal + teamArmyValueTotal
+                vsModeStats[allyID][teamID].damageDone = teamDamageDone
                 damageDoneTotal = damageDoneTotal + teamDamageDone
             end
             vsModeStats[allyID].metalIncome = metalIncomeTotal
@@ -675,6 +725,12 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     teamDecalCornerSize = math.floor(defaults.teamDecalCornerSize * scaleMultiplier)
     vsModeBarTextPadding = math.floor(defaults.vsModeBarTextPadding * scaleMultiplier)
     vsModeDeltaPadding = math.floor(defaults.vsModeDeltaPadding * scaleMultiplier)
+    vsModeMetricKnobPadding = math.floor(defaults.vsModeMetricKnobPadding * scaleMultiplier)
+    vsModeKnobOutline = math.floor(defaults.vsModeKnobOutline * scaleMultiplier)
+    vsModeKnobCornerSize = math.floor(defaults.vsModeKnobCornerSize * scaleMultiplier)
+    vsModeBarTriangleSize = math.floor(defaults.vsModeBarTriangleSize * scaleMultiplier)
+    vsModeBarPadding = math.floor(defaults.vsModeBarPadding * scaleMultiplier)
+    vsModeLineHeight = math.floor(defaults.vsModeLineHeight * scaleMultiplier)
 end
 
 local function calculateWidgetSize()
@@ -684,6 +740,7 @@ local function calculateWidgetSize()
     fontSize = math.floor(defaults.fontSize * scaleMultiplier)
     fontSizeMetric = math.floor(fontSize * 0.5)
     fontSizeVSBar = math.floor(fontSize * 0.5)
+    fontSizeVSModeKnob = math.floor(defaults.fontSizeVSModeKnob * scaleMultiplier)
 
     widgetDimensions.width = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
@@ -703,9 +760,10 @@ local function calculateWidgetSize()
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
     vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
     vsModeMetricIconWidth = vsModeMetricIconHeight * 2
-    vsModeBarChunkSize = math.floor(vsModeMetricIconHeight / 2)
     vsModeBarMarkerWidth = math.floor(defaults.vsModeBarMarkerWidth * scaleMultiplier)
     vsModeBarMarkerHeight = math.floor(defaults.vsModeBarMarkerHeight * scaleMultiplier)
+    vsModeKnobHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricKnobPadding * 2
+    vsModeKnobWidth = vsModeKnobHeight * 5
 
     vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
 
@@ -1122,36 +1180,6 @@ local function drawAUnicolorBar(left, bottom, right, top, value, max, color, cap
     gl.BeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
 end
 
-local function drawAMulticolorBar(left, bottom, right, top, values, colors)
-    gl.Color(0, 0, 0, 1)
-    gl.Rect(left, bottom, right, top)
-
-    local total = 0
-    for i=1,#values do
-        total = total + values[i]
-    end
-
-    local scaleFactor = (right - left - 2 * barPadding) / total
-
-    local valueStart = 0
-    local valueEnd = 0
-    for i=1,#values do
-        valueStart = valueEnd
-        valueEnd = valueStart + values[i]
-
-        local currentLeft = math.floor(left + barPadding + valueStart * scaleFactor)
-        local currentRight = math.floor(currentLeft + values[i] * scaleFactor)
-
-        gl.Color(colors[i])
-        gl.Rect(
-            currentLeft,
-            bottom + barPadding,
-            currentRight,
-            top - barPadding
-        )
-    end
-end
-
 local function drawAStatsBar(index, teamColor, amount, max, playerName, hasCommander, captainID)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
@@ -1248,154 +1276,155 @@ local function drawStatsBars()
     end
 end
 
-local function drawVSBar(valueRed, valueBlue, left, bottom, right, top)
-    local barLength = math.floor(right - left)
-
-    local divider = 0
-    if valueRed > 0 or valueBlue > 0 then
-        divider = left + math.floor(barLength * valueRed / (valueRed + valueBlue))
-    else
-        if valueRed == 0 then
-            if valueBlue == 0 then
-                divider = left + math.floor(barLength / 2)
-            else
-                divider = left + vsModeBarChunkSize
-            end
-        else
-            divider = right - vsModeBarChunkSize
-        end
-    end
-
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barProgressStartRed"])
-    gl.TexRect(
+local function drawVSModeKnob(left, bottom, right, top, color, text)
+    gl.Color(0, 0, 0, 1)
+    WG.FlowUI.Draw.RectRound(
         left,
         bottom,
-        left + vsModeBarChunkSize,
-        top
-    )
-    gl.Texture(images["barProgressMiddleRed"])
-    gl.TexRect(
-        left + vsModeBarChunkSize,
-        bottom,
-        divider,
-        top
-    )
-
-    gl.Texture(images["barProgressMiddleBlue"])
-    gl.TexRect(
-        divider,
-        bottom,
-        right - vsModeBarChunkSize,
-        top
-    )
-    gl.Texture(images["barProgressEndBlue"])
-    gl.TexRect(
-        right - vsModeBarChunkSize,
-        bottom,
         right,
-        top
+        top,
+        vsModeKnobCornerSize
+    )
+    gl.Color(color)
+    WG.FlowUI.Draw.RectRound(
+        left + vsModeKnobOutline,
+        bottom + vsModeKnobOutline,
+        right - vsModeKnobOutline,
+        top - vsModeKnobOutline,
+        vsModeKnobCornerSize
     )
 
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["barOutlineStart"])
-    gl.TexRect(
-        left,
-        bottom,
-        left + vsModeBarChunkSize,
-        top
-    )
-    gl.Texture(images["barOutlineMiddle"])
-    gl.TexRect(
-        left + vsModeBarChunkSize,
-        bottom,
-        right - vsModeBarChunkSize,
-        top
-    )
-    gl.Texture(images["barOutlineEnd"])
-    gl.TexRect(
-        right - vsModeBarChunkSize,
-        bottom,
-        right,
-        top
-    )
-
-    gl.Color(1, 1, 1, 1)
-    local markers = {{0.2, 1}, {0.4, 1}, {0.5, 2}, {0.6, 1}, {0.8, 1}}
-    for _, marker in ipairs(markers) do
-        markerX = left + math.floor(barLength * marker[1])
-        gl.Rect(
-            markerX - vsModeBarMarkerWidth * marker[2],
-            top - vsModeBarMarkerHeight * marker[2],
-            markerX + vsModeBarMarkerWidth * marker[2],
-            top
-        )
-        gl.Rect(
-            markerX - vsModeBarMarkerWidth * marker[2],
-            bottom,
-            markerX + vsModeBarMarkerWidth * marker[2],
-            bottom + vsModeBarMarkerHeight * marker[2]
-        )
-    end
-
-    -- print the team values at the edges of the bars
     font:Begin()
         font:SetTextColor({ 1, 1, 1, 1 })
         font:Print(
-            formatResources(valueRed, true),
-            --divider - vsModeBarTextPadding,
-            left + vsModeBarTextPadding,
-            bottom + math.floor((top - bottom) / 2),
-            fontSizeVSBar,
-            --'rvO'
-            'vO'
-        )
-        font:SetTextColor({ 1, 1, 1, 1 })
-        font:Print(
-            formatResources(valueBlue, true),
-            --divider + vsModeBarTextPadding,
-            right - vsModeBarTextPadding,
-            bottom + math.floor((top - bottom) / 2),
-            fontSizeVSBar,
-            --'vO'
-            'rvO'
-        )
-    font:End()
-
-    -- print the delta value in the middle
-    local valueDelta = math.abs(valueRed - valueBlue)
-    local posX = divider + (valueRed > valueBlue and -vsModeDeltaPadding or vsModeDeltaPadding)
-    if (valueRed > (valueBlue * 3)) then
-        posX = left + barLength * 0.75
-    elseif (valueBlue > (valueRed * 3)) then
-        posX = left + barLength * 0.25
-    end
-    font:Begin()
-        if valueRed > valueBlue then
-            font:SetTextColor({ 0, 1, 1, 1 })
-        else
-            font:SetTextColor({ 1, 1, 0, 1 })
-        end
-        font:Print(
-            formatResources(valueDelta, true),
-            posX,
-            bottom + math.floor((top - bottom) / 2),
-            fontSizeVSBar,
-            valueRed > valueBlue and 'rvO' or 'vO'
+            text,
+            math.floor((right + left) / 2),
+            math.floor((top + bottom) / 2),
+            fontSizeVSModeKnob,
+            'cvO'
         )
     font:End()
 end
 
-local function drawVSModeMetrics()
-    local indexRed, indexBlue
-    if vsModeStats[0].color[1] == 1 then
-        indexRed = 0
-        indexBlue = 1
+local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorLeft, colorRight, leftTeamValues, rightTeamValues)
+    local barTop = top - vsModeBarPadding
+    local barBottom = bottom + vsModeBarPadding
+
+    local barLength = right - left - vsModeKnobWidth
+
+    local leftBarWidth
+    if valueLeft > 0 or valueRight > 0 then
+        leftBarWidth = math.floor(barLength * valueLeft / (valueLeft + valueRight))
     else
-        indexRed = 1
-        indexBlue = 0
+        leftBarWidth = math.floor(barLength / 2)
+    end
+    local rightBarWidth = barLength - leftBarWidth
+
+    local knobColor
+    if valueLeft > valueRight then
+        knobColor = colorLeft
+    else
+        knobColor = colorRight
     end
 
+    gl.Color(makeDarkerColor(colorLeft, constants.darkerBarsFactor))
+    gl.Rect(
+        left,
+        barBottom,
+        left + leftBarWidth,
+        barTop
+    )
+
+    gl.Color(makeDarkerColor(colorRight, constants.darkerBarsFactor))
+    gl.Rect(
+        right - rightBarWidth,
+        barBottom,
+        right,
+        barTop
+    )
+
+    -- only draw team lines if mouse on bar
+    local mouseX, mouseY = Spring.GetMouseState()
+    if ((valueLeft > 0) or (valueRight > 0)) and (mouseX > left) and (mouseX < right) and (mouseY > bottom) and (mouseY < top) then
+        local scalingFactor = barLength / (valueLeft + valueRight)
+        local lineMiddle = math.floor((top + bottom) / 2)
+
+        local lineStart
+        local lineEnd = left
+        for _, teamValue in ipairs(leftTeamValues) do
+            lineStart = lineEnd
+            lineEnd = lineEnd + math.floor(teamValue.value * scalingFactor)
+            gl.Color(teamValue.color)
+            gl.Rect(
+                lineStart,
+                barBottom,
+                lineEnd,
+                barTop
+            )
+        end
+
+        local lineStart
+        local lineEnd = right - rightBarWidth
+        for _, teamValue in ipairs(rightTeamValues) do
+            lineStart = lineEnd
+            lineEnd = lineEnd + math.floor(teamValue.value * scalingFactor)
+            gl.Color(teamValue.color)
+            gl.Rect(
+                lineStart,
+                barBottom,
+                lineEnd,
+                barTop
+            )
+        end
+
+        -- when mouseover, middle knob shows absolute values
+        drawVSModeKnob(
+            left + leftBarWidth + 1,
+            bottom,
+            right - rightBarWidth - 1,
+            top,
+            makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
+            formatResources(math.abs(valueLeft - valueRight), true)
+        )
+    else
+        local lineMiddle = math.floor((top + bottom) / 2)
+        local lineBottom = lineMiddle - math.floor(vsModeLineHeight / 2)
+        local lineTop = lineMiddle + math.floor(vsModeLineHeight / 2)
+
+        gl.Color(makeDarkerColor(colorLeft, constants.darkerLinesFactor))
+        gl.Rect(
+            left,
+            lineBottom,
+            left + leftBarWidth,
+            lineTop
+        )
+
+        gl.Color(makeDarkerColor(colorRight, constants.darkerLinesFactor))
+        gl.Rect(
+            right - rightBarWidth,
+            lineBottom,
+            right,
+            lineTop
+        )
+
+        local relativeLead
+        if (valueLeft > 0) or (valueRight > 0) then
+            relativeLead = math.floor(100 * math.abs(valueLeft - valueRight) / (valueLeft + valueRight))
+        else
+            relativeLead = 0
+        end
+        drawVSModeKnob(
+            left + leftBarWidth + 1,
+            bottom,
+            right - rightBarWidth - 1,
+            top,
+            makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
+            string.format("%d%%", relativeLead)
+        )
+    end
+end
+
+local function drawVSModeMetrics()
     for _, vsModeMetric in ipairs(vsModeMetrics) do
         local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
@@ -1420,37 +1449,62 @@ local function drawVSModeMetrics()
             )
         font:End()
 
-        local valueRed, valueBlue
-        if vsModeMetric.metric == "Metal Income" then
-            valueRed = vsModeStats[indexRed].metalIncome
-            valueBlue = vsModeStats[indexBlue].metalIncome
-        elseif vsModeMetric.metric == "Energy Income" then
-            valueRed = vsModeStats[indexRed].energyIncome
-            valueBlue = vsModeStats[indexBlue].energyIncome
-        elseif vsModeMetric.metric == "Build Power" then
-            valueRed = vsModeStats[indexRed].buildPower
-            valueBlue = vsModeStats[indexBlue].buildPower
-        elseif vsModeMetric.metric == "Metal Produced" then
-            valueRed = vsModeStats[indexRed].metalProduced
-            valueBlue = vsModeStats[indexBlue].metalProduced
-        elseif vsModeMetric.metric == "Energy Produced" then
-            valueRed = vsModeStats[indexRed].energyProduced
-            valueBlue = vsModeStats[indexBlue].energyProduced
-        elseif vsModeMetric.metric == "Army Value" then
-            valueRed = vsModeStats[indexRed].armyValue
-            valueBlue = vsModeStats[indexBlue].armyValue
-        elseif vsModeMetric.metric == "Damage Dealt" then
-            valueRed = vsModeStats[indexRed].damageDone
-            valueBlue = vsModeStats[indexBlue].damageDone
+        local leftKnobLeft = iconRight + borderPadding + vsModeMetricIconPadding * 2
+        local leftKnobBottom = iconBottom
+        local leftKnobRight = leftKnobLeft + vsModeKnobWidth
+        local leftKnobTop = iconTop
+        drawVSModeKnob(
+            leftKnobLeft,
+            leftKnobBottom,
+            leftKnobRight,
+            leftKnobTop,
+            makeDarkerColor(vsModeStats[0].color, constants.darkerSideKnobsFactor),
+            formatResources(vsModeStats[0][vsModeMetric.key], true)
+        )
+
+        local rightKnobRight = vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2
+        local rightKnobBottom = iconBottom
+        local rightKnobLeft = rightKnobRight - vsModeKnobWidth
+        local rightKnobTop = iconTop
+        drawVSModeKnob(
+            rightKnobLeft,
+            rightKnobBottom,
+            rightKnobRight,
+            rightKnobTop,
+            makeDarkerColor(vsModeStats[1].color, constants.darkerSideKnobsFactor),
+            formatResources(vsModeStats[1][vsModeMetric.key], true)
+        )
+
+        local leftTeamValues = {}
+        local leftTeamIDs = Spring.GetTeamList(0)
+        for _, teamID in ipairs(leftTeamIDs) do
+            table.insert(leftTeamValues, {
+                value = vsModeStats[0][teamID][vsModeMetric.key],
+                color = vsModeStats[0][teamID].color
+            })
+        end
+
+        local rightTeamValues = {}
+        local rightTeamIDs = Spring.GetTeamList(1)
+        for _, teamID in ipairs(rightTeamIDs) do
+            table.insert(rightTeamValues, {
+                value = vsModeStats[1][teamID][vsModeMetric.key],
+                color = vsModeStats[1][teamID].color
+            })
         end
 
         drawVSBar(
-            valueRed,
-            valueBlue,
-            iconRight + borderPadding + vsModeMetricIconPadding * 2,
+            leftKnobRight,
             iconBottom,
-            vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2,
-            iconTop)
+            rightKnobLeft,
+            iconTop,
+            vsModeStats[0][vsModeMetric.key],
+            vsModeStats[1][vsModeMetric.key],
+            vsModeStats[0].color,
+            vsModeStats[1].color,
+            leftTeamValues,
+            rightTeamValues
+        )
     end
 end
 
