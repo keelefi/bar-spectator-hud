@@ -1277,7 +1277,8 @@ local function drawStatsBars()
 end
 
 local function drawVSModeKnob(left, bottom, right, top, color, text)
-    gl.Color(0, 0, 0, 1)
+    local matchingGrey = makeDarkerColor(color, 0.5)
+    gl.Color(matchingGrey[1], matchingGrey[2], matchingGrey[3], 1)
     WG.FlowUI.Draw.RectRound(
         left,
         bottom,
