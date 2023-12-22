@@ -1421,15 +1421,26 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             lineTop
         )
 
-        local relativeLead
-        if (valueLeft > 0) or (valueRight > 0) then
-            if valueLeft > valueRight then
+        local relativeLead = 0
+        local relativeLeadMax = 999
+        local relativeLeadString = nil
+        if valueLeft > valueRight then
+            if valueRight > 0 then
                 relativeLead = math.floor(100 * math.abs(valueLeft - valueRight) / valueRight)
             else
-                relativeLead = math.floor(100 * math.abs(valueRight - valueLeft) / valueLeft)
+                relativeLeadString = "Inf"
             end
-        else
-            relativeLead = 0
+        elseif valueRight > valueLeft then
+            if valueLeft > 0 then
+                relativeLead = math.floor(100 * math.abs(valueRight - valueLeft) / valueLeft)
+            else
+                relativeLeadString = "Inf"
+            end
+        end
+        if relativeLead > relativeLeadMax then
+            relativeLeadString = string.format(">%d%%", relativeLeadMax)
+        elseif not relativeLeadString then
+            relativeLeadString = string.format("%d%%", relativeLead)
         end
         drawVSModeKnob(
             left + leftBarWidth + 1,
@@ -1437,7 +1448,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             right - rightBarWidth - 1,
             top,
             makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
-            string.format("%d%%", relativeLead)
+            relativeLeadString
         )
     end
 end
