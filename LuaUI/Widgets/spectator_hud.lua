@@ -1423,7 +1423,11 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
 
         local relativeLead
         if (valueLeft > 0) or (valueRight > 0) then
-            relativeLead = math.floor(100 * math.abs(valueLeft - valueRight) / (valueLeft + valueRight))
+            if valueLeft > valueRight then
+                relativeLead = math.floor(100 * math.abs(valueLeft - valueRight) / valueRight)
+            else
+                relativeLead = math.floor(100 * math.abs(valueRight - valueLeft) / valueLeft)
+            end
         else
             relativeLead = 0
         end
