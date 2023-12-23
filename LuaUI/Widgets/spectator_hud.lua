@@ -1458,6 +1458,8 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
 end
 
 local function drawVSModeMetrics()
+    local indexLeft = 1
+    local indexRight = 0
     for _, vsModeMetric in ipairs(vsModeMetrics) do
         local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
@@ -1491,8 +1493,8 @@ local function drawVSModeMetrics()
             leftKnobBottom,
             leftKnobRight,
             leftKnobTop,
-            makeDarkerColor(vsModeStats[0].color, constants.darkerSideKnobsFactor),
-            formatResources(vsModeStats[0][vsModeMetric.key], true)
+            makeDarkerColor(vsModeStats[indexLeft].color, constants.darkerSideKnobsFactor),
+            formatResources(vsModeStats[indexLeft][vsModeMetric.key], true)
         )
 
         local rightKnobRight = vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2
@@ -1504,25 +1506,25 @@ local function drawVSModeMetrics()
             rightKnobBottom,
             rightKnobRight,
             rightKnobTop,
-            makeDarkerColor(vsModeStats[1].color, constants.darkerSideKnobsFactor),
-            formatResources(vsModeStats[1][vsModeMetric.key], true)
+            makeDarkerColor(vsModeStats[indexRight].color, constants.darkerSideKnobsFactor),
+            formatResources(vsModeStats[indexRight][vsModeMetric.key], true)
         )
 
         local leftTeamValues = {}
-        local leftTeamIDs = Spring.GetTeamList(0)
+        local leftTeamIDs = Spring.GetTeamList(indexLeft)
         for _, teamID in ipairs(leftTeamIDs) do
             table.insert(leftTeamValues, {
-                value = vsModeStats[0][teamID][vsModeMetric.key],
-                color = vsModeStats[0][teamID].color
+                value = vsModeStats[indexLeft][teamID][vsModeMetric.key],
+                color = vsModeStats[indexLeft][teamID].color
             })
         end
 
         local rightTeamValues = {}
-        local rightTeamIDs = Spring.GetTeamList(1)
+        local rightTeamIDs = Spring.GetTeamList(indexRight)
         for _, teamID in ipairs(rightTeamIDs) do
             table.insert(rightTeamValues, {
-                value = vsModeStats[1][teamID][vsModeMetric.key],
-                color = vsModeStats[1][teamID].color
+                value = vsModeStats[indexRight][teamID][vsModeMetric.key],
+                color = vsModeStats[indexRight][teamID].color
             })
         end
 
@@ -1531,10 +1533,10 @@ local function drawVSModeMetrics()
             iconBottom,
             rightKnobLeft,
             iconTop,
-            vsModeStats[0][vsModeMetric.key],
-            vsModeStats[1][vsModeMetric.key],
-            vsModeStats[0].color,
-            vsModeStats[1].color,
+            vsModeStats[indexLeft][vsModeMetric.key],
+            vsModeStats[indexRight][vsModeMetric.key],
+            vsModeStats[indexLeft].color,
+            vsModeStats[indexRight].color,
             leftTeamValues,
             rightTeamValues,
             vsModeMetric.metric
