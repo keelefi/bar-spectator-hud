@@ -1398,20 +1398,6 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
             formatResources(math.abs(valueLeft - valueRight), true)
         )
-
-        if WG['tooltip'] then
-            local tooltipText = string.format("Left: %s\nRight: %s",
-                formatResources(valueLeft, false),
-                formatResources(valueRight, false)
-            )
-            WG['tooltip'].ShowTooltip(
-                "spectator_hud_vsmode_mouseover_tooltip",
-                tooltipText,
-                mouseX + vsModeBarTooltipOffsetX,
-                mouseY + vsModeBarTooltipOffsetY,
-                metricTitle
-            )
-        end
     else
         local lineMiddle = math.floor((top + bottom) / 2)
         local lineBottom = lineMiddle - math.floor(vsModeLineHeight / 2)
