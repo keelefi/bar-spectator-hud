@@ -1324,8 +1324,11 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
     local knobColor
     if valueLeft > valueRight then
         knobColor = colorLeft
-    else
+    elseif valueRight > valueLeft then
         knobColor = colorRight
+    else
+        -- color grey if even
+        knobColor = { 0.6, 0.6, 0.6, 1 }
     end
 
     gl.Color(makeDarkerColor(colorLeft, constants.darkerBarsFactor))
