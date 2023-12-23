@@ -144,6 +144,9 @@ local vsModeBarMarkerWidth, vsModeBarMarkerHeight
 local vsModeBarPadding
 local vsModeLineHeight
 
+local vsModeBarTooltipOffsetX
+local vsModeBarTooltipOffsetY
+
 -- note: the different between defaults and constants is that defaults are adjusted according to
 -- screen size, widget size and ui scale. On the other hand, constants do not change.
 local constants = {
@@ -181,6 +184,9 @@ local defaults = {
 
     vsModeBarPadding = 8,
     vsModeLineHeight = 12,
+
+    vsModeBarTooltipOffsetX = 60,
+    vsModeBarTooltipOffsetY = -60,
 }
 
 local tooltipNames = {}
@@ -731,6 +737,8 @@ local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     vsModeBarTriangleSize = math.floor(defaults.vsModeBarTriangleSize * scaleMultiplier)
     vsModeBarPadding = math.floor(defaults.vsModeBarPadding * scaleMultiplier)
     vsModeLineHeight = math.floor(defaults.vsModeLineHeight * scaleMultiplier)
+    vsModeBarTooltipOffsetX = math.floor(defaults.vsModeBarTooltipOffsetX * scaleMultiplier)
+    vsModeBarTooltipOffsetY = math.floor(defaults.vsModeBarTooltipOffsetY * scaleMultiplier)
 end
 
 local function calculateWidgetSize()
@@ -1399,8 +1407,8 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             WG['tooltip'].ShowTooltip(
                 "spectator_hud_vsmode_mouseover_tooltip",
                 tooltipText,
-                mouseX,
-                mouseY,
+                mouseX + vsModeBarTooltipOffsetX,
+                mouseY + vsModeBarTooltipOffsetY,
                 metricTitle
             )
         end
