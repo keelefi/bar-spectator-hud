@@ -245,11 +245,42 @@ local images = {
     toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
 }
 
+local function isArmyUnit(unitDefID)
+    if unitDefID and UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
+        return true
+    else
+        return false
+    end
+end
+
+local function getUnitBuildPower(unitDefID)
+    if unitDefID and UnitDefs[unitDefID].buildSpeed then
+        return UnitDefs[unitDefID].buildSpeed
+    else
+        return 0
+    end
+end
+
+local unitCache = {}
+
+local armyUnitDefs = {}
 local comDefs = {}
+local buildPowerUnitDefs = {}
 for udefID, def in ipairs(UnitDefs) do
+    -- army units, collect metal cost
+    if isArmyUnit(udefID) then
+        armyUnitDefs[udefID] = def.metalCost
+        --Spring.Echo(string.format("army unit def, metal cost: %d", def.metalCost))
+    end
+    -- commanders
 	if def.customParams.iscommander then
 		comDefs[udefID] = true
 	end
+    -- units with build power
+    local buildPower = getUnitBuildPower(udefID)
+    if buildPower > 0 then
+        buildPowerUnitDefs[udefID] = buildPower
+    end
 end
 
 local function makeDarkerColor(color, factor, alpha)
@@ -331,22 +362,6 @@ local function teamHasCommander(teamID)
 	return hasCom
 end
 
-local function isArmyUnit(unitDefID)
-    if unitDefID and UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
-        return true
-    else
-        return false
-    end
-end
-
-local function getUnitBuildPower(unitDefID)
-    if unitDefID and UnitDefs[unitDefID].buildSpeed then
-        return UnitDefs[unitDefID].buildSpeed
-    else
-        return 0
-    end
-end
-
 local function getAmountOfAllyTeams()
     local amountOfAllyTeams = 0
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
@@ -383,6 +398,38 @@ end
 
 local function getAmountOfVSModeMetrics()
     return #vsModeMetrics
+end
+
+local function buildUnitCache()
+    unitCache = {}
+
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            local teamList = Spring.GetTeamList(allyID)
+            for _, teamID in ipairs(teamList) do
+                unitCache[teamID] = {}
+                unitCache[teamID].buildPower = 0
+                unitCache[teamID].buildPowerUnits = {}
+                unitCache[teamID].armyValue = 0
+                unitCache[teamID].armyUnits = {}
+                local unitIDs = Spring.GetTeamUnits(teamID)
+                for i=1,#unitIDs do
+                    local unitID = unitIDs[i]
+                    if not Spring.GetUnitIsBeingBuilt(unitID) then
+                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
+                        if buildPowerUnitDefs[currentUnitDefID] then
+                            unitCache[teamID].buildPower = unitCache[teamID].buildPower + buildPowerUnitDefs[currentUnitDefID]
+                            unitCache[teamID].buildPowerUnits[unitID] = buildPowerUnitDefs[currentUnitDefID]
+                        end
+                        if armyUnitDefs[currentUnitDefID] then
+                            unitCache[teamID].armyValue = unitCache[teamID].armyValue + armyUnitDefs[currentUnitDefID]
+                            unitCache[teamID].armyUnits[unitID] = armyUnitDefs[currentUnitDefID]
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 local function sortStats()
@@ -487,30 +534,9 @@ local function updateStatsNormalMode(statToUpdate)
                         value = statsHistory[1].metalProduced
                     end
                 elseif statToUpdate == "Build Power" then
-                    local buildPowerTotal = 0
-                    local unitIDs = Spring.GetTeamUnits(teamID)
-                    for i = 1, #unitIDs do
-                        local unitID = unitIDs[i]
-                        if not Spring.GetUnitIsBeingBuilt(unitID) then
-                            local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                            buildPowerTotal = buildPowerTotal + getUnitBuildPower(currentUnitDefID)
-                        end
-                    end
-                    value = buildPowerTotal
+                    value = unitCache[teamID].buildPower
                 elseif statToUpdate == "Army Value" then
-                    local armyValueTotal = 0
-                    local unitIDs = Spring.GetTeamUnits(teamID)
-                    for i = 1, #unitIDs do
-                        local unitID = unitIDs[i]
-                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                        if currentUnitDefID then
-                            local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
-                            if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
-                                armyValueTotal = armyValueTotal + currentUnitMetalCost
-                            end
-                        end
-                    end
-                    value = armyValueTotal
+                    value = unitCache[teamID].armyValue
                 elseif statToUpdate == "Army Size" then
                     local unitIDs = Spring.GetTeamUnits(teamID)
                     local armySizeTotal = 0
@@ -582,7 +608,7 @@ local function updateStatsVSMode()
                 local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
                 local teamMetalIncome = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
                 local teamEnergyIncome = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
-                local teamBuildPower = 0 -- TODO: calculate build power
+                local teamBuildPower = 0
                 local teamMetalProduced = 0
                 local teamEnergyProduced = 0
                 local teamDamageDone = 0
@@ -592,20 +618,8 @@ local function updateStatsVSMode()
                     teamDamageDone = statsHistory[1].damageDealt
                 end
                 local teamArmyValueTotal = 0
-                local unitIDs = Spring.GetTeamUnits(teamID)
-                for i = 1, #unitIDs do
-                    local unitID = unitIDs[i]
-                    local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                    if currentUnitDefID then
-                        local currentUnitMetalCost = UnitDefs[currentUnitDefID].metalCost
-                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID) then
-                            teamArmyValueTotal = teamArmyValueTotal + currentUnitMetalCost
-                        end
-                        if not Spring.GetUnitIsBeingBuilt(unitID) then
-                            teamBuildPower = teamBuildPower + getUnitBuildPower(currentUnitDefID)
-                        end
-                    end
-                end
+                teamBuildPower = unitCache[teamID].buildPower
+                teamArmyValueTotal = unitCache[teamID].armyValue
                 vsModeStats[allyID][teamID].metalIncome = teamMetalIncome
                 metalIncomeTotal = metalIncomeTotal + teamMetalIncome
                 vsModeStats[allyID][teamID].energyIncome = teamEnergyIncome
@@ -1672,6 +1686,8 @@ local function init()
         updateVSModeTooltips()
     end
 
+    buildUnitCache()
+
     updateStats()
 end
 
@@ -1747,6 +1763,55 @@ function widget:TeamDied(teamID)
 
     if haveFullView then
         processPlayerCountChanged()
+    end
+end
+
+function widget:UnitFinished(unitID, unitDefID, unitTeam)
+    if not haveFullView then
+        return
+    end
+
+    if armyUnitDefs[unitDefID] then
+        unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue + armyUnitDefs[unitDefID]
+        unitCache[unitTeam].armyUnits[unitID] = armyUnitDefs[unitDefID]
+    end
+    if buildPowerUnitDefs[unitDefID] then
+        unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower + buildPowerUnitDefs[unitDefID]
+        unitCache[unitTeam].buildPowerUnits[unitID] = buildPowerUnitDefs[unitDefID]
+    end
+end
+
+function widget:UnitGiven(unitID, unitDefID, oldTeam, newTeam)
+    if not haveFullView then
+        return
+    end
+
+    if armyUnitDefs[unitDefID] then
+        unitCache[oldTeam].armyValue = unitCache[oldTeam].armyValue - armyUnitDefs[unitDefID]
+        unitCache[oldTeam].armyUnits[unitID] = nil
+        unitCache[newTeam].armyValue = unitCache[newTeam].armyValue + armyUnitDefs[unitDefID]
+        unitCache[newTeam].armyUnits[unitID] = armyUnitDefs[unitDefID]
+    end
+    if buildPowerUnitDefs[unitDefID] then
+        unitCache[oldTeam].buildPower = unitCache[oldTeam].buildPower - buildPowerUnitDefs[unitDefID]
+        unitCache[oldTeam].buildPowerUnits[unitID] = nil
+        unitCache[newTeam].buildPower = unitCache[newTeam].buildPower + buildPowerUnitDefs[unitDefID]
+        unitCache[newTeam].buildPowerUnits[unitID] = buildPowerUnitDefs[unitDefID]
+    end
+end
+
+function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
+    if not haveFullView then
+        return
+    end
+
+    if armyUnitDefs[unitDefID] then
+        unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue - armyUnitDefs[unitDefID]
+        unitCache[unitTeam].armyUnits[unitID] = nil
+    end
+    if buildPowerUnitDefs[unitDefID] then
+        unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower - buildPowerUnitDefs[unitDefID]
+        unitCache[unitTeam].buildPowerUnits[unitID] = nil
     end
 end
 
