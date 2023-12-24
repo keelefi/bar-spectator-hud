@@ -1786,15 +1786,20 @@ function widget:UnitGiven(unitID, unitDefID, oldTeam, newTeam)
         return
     end
 
-    if armyUnitDefs[unitDefID] then
-        unitCache[oldTeam].armyValue = unitCache[oldTeam].armyValue - armyUnitDefs[unitDefID]
+    if unitCache[oldTeam].armyUnits[unitID] then
+        unitCache[oldTeam].armyValue = unitCache[oldTeam].armyValue - unitCache[oldTeam].armyUnits[unitID]
         unitCache[oldTeam].armyUnits[unitID] = nil
+    end
+    if armyUnitDefs[unitDefID] then
         unitCache[newTeam].armyValue = unitCache[newTeam].armyValue + armyUnitDefs[unitDefID]
         unitCache[newTeam].armyUnits[unitID] = armyUnitDefs[unitDefID]
     end
-    if buildPowerUnitDefs[unitDefID] then
-        unitCache[oldTeam].buildPower = unitCache[oldTeam].buildPower - buildPowerUnitDefs[unitDefID]
+
+    if unitCache[oldTeam].buildPowerUnits[unitID] then
+        unitCache[oldTeam].buildPower = unitCache[oldTeam].buildPower - unitCache[oldTeam].buildPowerUnits[unitID]
         unitCache[oldTeam].buildPowerUnits[unitID] = nil
+    end
+    if buildPowerUnitDefs[unitDefID] then
         unitCache[newTeam].buildPower = unitCache[newTeam].buildPower + buildPowerUnitDefs[unitDefID]
         unitCache[newTeam].buildPowerUnits[unitID] = buildPowerUnitDefs[unitDefID]
     end
@@ -1805,12 +1810,12 @@ function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerD
         return
     end
 
-    if armyUnitDefs[unitDefID] then
-        unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue - armyUnitDefs[unitDefID]
+    if unitCache[unitTeam].armyUnits[unitID] then
+        unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue - unitCache[unitTeam].armyUnits[unitID]
         unitCache[unitTeam].armyUnits[unitID] = nil
     end
-    if buildPowerUnitDefs[unitDefID] then
-        unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower - buildPowerUnitDefs[unitDefID]
+    if unitCache[unitTeam].buildPowerUnits[unitID] then
+        unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower - unitCache[unitTeam].buildPowerUnits[unitID]
         unitCache[unitTeam].buildPowerUnits[unitID] = nil
     end
 end
