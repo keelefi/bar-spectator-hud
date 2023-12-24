@@ -279,11 +279,12 @@ local function round(num, idp)
     return math.floor(num * mult + 0.5) / mult
 end
 
-local thousand = 1000
-local tenThousand = 10 * thousand
-local million = thousand * thousand
-local tenMillion = 10 * million
 local function formatResources(amount, short)
+    local thousand = 1000
+    local tenThousand = 10 * thousand
+    local million = thousand * thousand
+    local tenMillion = 10 * million
+
     if short then
         if amount >= tenMillion then
             return string.format("%dM", amount / million)
