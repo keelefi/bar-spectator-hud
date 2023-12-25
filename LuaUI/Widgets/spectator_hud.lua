@@ -1781,7 +1781,7 @@ function widget:UnitFinished(unitID, unitDefID, unitTeam)
     end
 end
 
-function widget:UnitGiven(unitID, unitDefID, oldTeam, newTeam)
+function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
     if not haveFullView then
         return
     end
