@@ -1259,7 +1259,7 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
     font:End()
 
     if WG['tooltip'] and playerName then
-        local tooltipName = string.format("stat_bar_player_%s", playerName)
+        local tooltipName = string.format("stat_bar_player_%d", index)
         WG['tooltip'].AddTooltip(
             tooltipName,
             {
