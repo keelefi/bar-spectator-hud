@@ -223,13 +223,13 @@ local vsMode = false
 local vsModeEnabled = false
 
 local vsModeMetrics = {
-    { id=1, key="metalIncome", text="M/s", metric="Metal Income", tooltip="Metal Income" },
-    { id=2, key="energyIncome", text="E/s", metric="Energy Income", tooltip="Energy Income" },
-    { id=3, key="buildPower", text="BP", metric="Build Power", tooltip="Build Power" },
-    { id=4, key="metalProduced", text="MP", metric="Metal Produced", tooltip="Metal Produced" },
-    { id=5, key="energyProduced", text="EP", metric="Energy Produced", tooltip="Energy Produced" },
-    { id=6, key="armyValue", text="AV", metric="Army Value", tooltip="Army Value (in metal)" },
-    { id=7, key="damageDone", text="Dmg", metric="Damage Dealt", tooltip="Damage Dealt" },
+    { id=1, key="metalIncome", text="M/s", metric="Metal Income", tooltip="Metal income per second" },
+    { id=2, key="energyIncome", text="E/s", metric="Energy Income", tooltip="Energy income per second" },
+    { id=3, key="buildPower", text="BP", metric="Build Power", tooltip="Build power" },
+    { id=4, key="metalProduced", text="MP", metric="Metal Produced", tooltip="Total metal produced" },
+    { id=5, key="energyProduced", text="EP", metric="Energy Produced", tooltip="Total energy produced" },
+    { id=6, key="armyValue", text="AV", metric="Army Value", tooltip="Army value in metal,\nincl. commander and\nstatic defenses" },
+    { id=7, key="damageDone", text="Dmg", metric="Damage Dealt", tooltip="Total damage dealt" },
 }
 
 local metricChosenID = 1
@@ -946,7 +946,9 @@ local function updateVSModeTooltips()
             WG['tooltip'].AddTooltip(
                 string.format("spectator_hud_vsmode_%d", vsModeMetric.id),
                 { iconLeft, iconBottom, iconRight, iconTop },
-                vsModeMetric.tooltip
+                vsModeMetric.tooltip,
+                nil,
+                vsModeMetric.metric
             )
         end
     end
