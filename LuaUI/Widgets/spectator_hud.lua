@@ -487,7 +487,7 @@ local function buildUnitCache()
         add = function(unitID, value)
             local result = value[1]
             if options.useMetalEquivalent70 then
-                result = result + value[2]
+                result = result + (value[2] / 70)
             end
             return result
         end,
@@ -495,7 +495,7 @@ local function buildUnitCache()
         remove = function(unitID, value)
             local result = value[1]
             if options.useMetalEquivalent70 then
-                result = result + value[2]
+                result = result + (value[2] / 70)
             end
             return result
         end,
@@ -658,7 +658,7 @@ end
 
 local updateHeaderTooltip -- symbol declaration, function definition later
 local function setMetricChosen(metricKey, ignoreUpdateHeader)
-    local metricChosenKeyOld = metricChosenKey 
+    local metricChosenKeyOld = metricChosenKey
     metricChosenKey = metricKey
     local metricChosen = getMetricChosen()
     if not metricChosen then
@@ -2109,7 +2109,7 @@ function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
     if unitCache[oldTeam] then
         removeFromUnitCache(oldTeam, unitID, unitDefID)
     end
-    
+
     if unitCache[newTeam] then
         addToUnitCache(newTeam, unitID, unitDefID)
     end
