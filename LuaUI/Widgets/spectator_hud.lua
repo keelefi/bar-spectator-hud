@@ -209,30 +209,43 @@ local statsUpdateFrequency = 5        -- every 5 frames
 local headerTooltipName = "spectator_hud_header"
 local headerTooltipTitle = "Select Metric"
 local metricsAvailable = {
-    { id=1, title="Metal Income", tooltip="Metal Income" },
-    { id=2, title="Metal Produced", tooltip="Metal Produced" },
-    { id=3, title="Build Power", tooltip="Build Power" },
-    { id=4, title="Army Value", tooltip="Army Value in Metal" },
-    { id=5, title="Army Size", tooltip="Army Size in Units" },
-    { id=6, title="Damage Done", tooltip="Damage Done" },
-    { id=7, title="Damage Received", tooltip="Damage Received" },
-    { id=8, title="Damage Efficiency", tooltip="Damage Efficiency" },
+    { key="metalIncome", title="Metal Income", text="M/s", defaultValue=true,
+      tooltip="Metal income per second" },
+    { key="reclaimMetalIncome", title="Metal Reclaim", text="MR", defaultValue=false,
+      tooltip="Metal income from reclaim" },
+    { key="energyConversionMetalIncome", title="Metal Conversion", text="EC", defaultValue=false,
+      tooltip="Metal income from energy conversion" },
+    { key="energyIncome", title="Energy Income", text="E/s", defaultValue=true,
+      tooltip="Energy income per second" },
+    { key="reclaimEnergyIncome", title="Energy Reclaim", text="ER", defaultValue=false,
+      tooltip="Energy income from reclaim" },
+    { key="buildPower", title="Build Power", text="BP", defaultValue=true,
+      tooltip="Build Power" },
+    { key="metalProduced", title="Metal Produced", text="MP", defaultValue=true,
+      tooltip="Total metal produced" },
+    { key="energyProduced", title="Energy Produced", text="EP", defaultValue=true,
+      tooltip="Total energy produced" },
+    { key="armyValue", title="Army Value", text="AV", defaultValue=true,
+      tooltip="Army value in metal,\nincl. commander" },
+    { key="defenseValue", title="Defense Value", text="DV", defaultValue=false,
+      tooltip="Defense value in metal" },
+    { key="utilityValue", title="Utility Value", text="UV", defaultValue=false,
+      tooltip="Utility value in metal" },
+    { key="economyValue", title="Economy Value", text="EV", defaultValue=false,
+      tootltip="Economy value in metal" },
+    { key="damageDealt", title="Damage Dealt", text="Dmg", defaultValue=true,
+      tooltip="Damage dealt" },
+    { key="damageReceived", title="Damage Received", text="DR", defaultValue=false,
+      tooltip="Damage received" },
+    { key="damageEfficiency", title="Damage Efficiency", text="D%", defaultValue=false,
+      tooltip="Damage efficiency" },
 }
+local metricsEnabled = {}
 
 local vsMode = false
 local vsModeEnabled = false
 
-local vsModeMetrics = {
-    { id=1, key="metalIncome", text="M/s", metric="Metal Income", tooltip="Metal income per second" },
-    { id=2, key="energyIncome", text="E/s", metric="Energy Income", tooltip="Energy income per second" },
-    { id=3, key="buildPower", text="BP", metric="Build Power", tooltip="Build power" },
-    { id=4, key="metalProduced", text="MP", metric="Metal Produced", tooltip="Total metal produced" },
-    { id=5, key="energyProduced", text="EP", metric="Energy Produced", tooltip="Total energy produced" },
-    { id=6, key="armyValue", text="AV", metric="Army Value", tooltip="Army value in metal,\nincl. commander and\nstatic defenses" },
-    { id=7, key="damageDone", text="Dmg", metric="Damage Dealt", tooltip="Total damage dealt" },
-}
-
-local metricChosenID = 1
+local metricChosenKey = "metalIncome"
 local metricChangeInProgress = false
 local sortingChosen = "player"
 local teamStats = {}
@@ -245,43 +258,285 @@ local images = {
     toggleVSMode = "LuaUI/Images/spectator_hud/button-vs.png",
 }
 
-local function isArmyUnit(unitDefID)
-    if unitDefID and UnitDefs[unitDefID].weapons and (#UnitDefs[unitDefID].weapons > 0) then
-        return true
-    else
-        return false
-    end
-end
+local options = {
+    -- note: metrics table is built from metricsAvailable during configuration load
 
-local function getUnitBuildPower(unitDefID)
-    if unitDefID and UnitDefs[unitDefID].buildSpeed then
-        return UnitDefs[unitDefID].buildSpeed
-    else
-        return 0
-    end
-end
+    useMetalEquivalent70 = false,
+    subtractReclaimFromIncome = false,
+}
 
 local unitCache = {}
+local cachedTotals = {}
+local unitDefsToTrack = {}
 
-local armyUnitDefs = {}
-local comDefs = {}
-local buildPowerUnitDefs = {}
-for udefID, def in ipairs(UnitDefs) do
-    -- army units, collect metal cost
-    if isArmyUnit(udefID) then
-        armyUnitDefs[udefID] = def.metalCost
-        --Spring.Echo(string.format("army unit def, metal cost: %d", def.metalCost))
+local function buildUnitDefs()
+    local function isCommander(unitDefID, unitDef)
+        return unitDef.customParams.iscommander
     end
-    -- commanders
-	if def.customParams.iscommander then
-		comDefs[udefID] = true
-	end
-    -- units with build power
-    local buildPower = getUnitBuildPower(udefID)
-    if buildPower > 0 then
-        buildPowerUnitDefs[udefID] = buildPower
+
+    local function isReclaimerUnit(unitDefID, unitDef)
+        return unitDef.isBuilder and not unitDef.isFactory
+    end
+
+    local function isEnergyConverter(unitDefID, unitDef)
+        return unitDef.customParams.energyconv_capacity and unitDef.customParams.energyconv_efficiency
+    end
+
+    local function isBuildPower(unitDefID, unitDef)
+        return unitDef.buildSpeed and (unitDef.buildSpeed > 0)
+    end
+
+    local function isArmyUnit(unitDefID, unitDef)
+        -- anything with a least one weapon and speed above zero is considered an army unit
+        return unitDef.weapons and (#unitDef.weapons > 0) and unitDef.speed and (unitDef.speed > 0)
+    end
+
+    local function isDefenseUnit(unitDefID, unitDef)
+        return unitDef.weapons and (#unitDef.weapons > 0) and (not unitDef.speed or (unitDef.speed == 0))
+    end
+
+    local function isUtilityUnit(unitDefID, unitDef)
+        return unitDef.customParams.unitgroup == 'util'
+    end
+
+    local function isEconomyBuilding(unitDefID, unitDef)
+        return (unitDef.customParams.unitgroup == 'metal') or (unitDef.customParams.unitgroup == 'energy')
+    end
+
+    unitDefsToTrack = {}
+    unitDefsToTrack.commanderUnitDefs = {}
+    unitDefsToTrack.reclaimerUnitDefs = {}
+    unitDefsToTrack.energyConverterDefs = {}
+    unitDefsToTrack.buildPowerDefs = {}
+    unitDefsToTrack.armyUnitDefs = {}
+    unitDefsToTrack.defenseUnitDefs = {}
+    unitDefsToTrack.utilityUnitDefs = {}
+    unitDefsToTrack.economyBuildingDefs = {}
+
+    for unitDefID, unitDef in ipairs(UnitDefs) do
+        if isCommander(unitDefID, unitDef) then
+            unitDefsToTrack.commanderUnitDefs[unitDefID] = true
+        end
+        if isReclaimerUnit(unitDefID, unitDef) then
+            unitDefsToTrack.reclaimerUnitDefs[unitDefID] = { unitDef.metalMake, unitDef.energyMake }
+        end
+        if isEnergyConverter(unitDefID, unitDef) then
+            unitDefsToTrack.energyConverterDefs[unitDefID] = tonumber(unitDef.customParams.energyconv_capacity)
+        end
+        if isBuildPower(unitDefID, unitDef) then
+            unitDefsToTrack.buildPowerDefs[unitDefID] = unitDef.buildSpeed
+        end
+        if isArmyUnit(unitDefID, unitDef) then
+            unitDefsToTrack.armyUnitDefs[unitDefID] = { unitDef.metalCost, unitDef.energyCost }
+        end
+        if isDefenseUnit(unitDefID, unitDef) then
+            unitDefsToTrack.defenseUnitDefs[unitDefID] = { unitDef.metalCost, unitDef.energyCost }
+        end
+        if isUtilityUnit(unitDefID, unitDef) then
+            unitDefsToTrack.utilityUnitDefs[unitDefID] = { unitDef.metalCost, unitDef.energyCost }
+        end
+        if isEconomyBuilding(unitDefID, unitDef) then
+            unitDefsToTrack.economyBuildingDefs[unitDefID] = { unitDef.metalCost, unitDef.energyCost }
+        end
     end
 end
+
+local function addToUnitCache(teamID, unitID, unitDefID)
+    local function addToUnitCacheInternal(cache, teamID, unitID, value)
+        if unitCache[teamID][cache] then
+            if not unitCache[teamID][cache][unitID] then
+                if cachedTotals[teamID][cache] then
+                    local valueToAdd = 0
+                    if unitCache[cache].add then
+                        valueToAdd = unitCache[cache].add(unitID, value)
+                    end
+                    cachedTotals[teamID][cache] = cachedTotals[teamID][cache] + valueToAdd
+                end
+                unitCache[teamID][cache][unitID] = value
+            else
+                Spring.Echo(string.format("WARNING: addToUnitCache(), unitID %d already added", unitID))
+            end
+        end
+    end
+
+    if unitDefsToTrack.reclaimerUnitDefs[unitDefID] then
+        addToUnitCacheInternal("reclaimerUnits", teamID, unitID,
+                       unitDefsToTrack.reclaimerUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.energyConverterDefs[unitDefID] then
+        addToUnitCacheInternal("energyConverters", teamID, unitID,
+                       unitDefsToTrack.energyConverterDefs[unitDefID])
+    end
+    if unitDefsToTrack.buildPowerDefs[unitDefID] then
+        addToUnitCacheInternal("buildPower", teamID, unitID,
+                       unitDefsToTrack.buildPowerDefs[unitDefID])
+    end
+    if unitDefsToTrack.armyUnitDefs[unitDefID] then
+        addToUnitCacheInternal("armyUnits", teamID, unitID,
+                       unitDefsToTrack.armyUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.defenseUnitDefs[unitDefID] then
+        addToUnitCacheInternal("defenseUnits", teamID, unitID,
+                       unitDefsToTrack.defenseUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.utilityUnitDefs[unitDefID] then
+        addToUnitCacheInternal("utilityUnits", teamID, unitID,
+                       unitDefsToTrack.utilityUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.economyBuildingDefs[unitDefID] then
+        addToUnitCacheInternal("economyBuildings", teamID, unitID,
+                       unitDefsToTrack.economyBuildingDefs[unitDefID])
+    end
+end
+
+local function removeFromUnitCache(teamID, unitID, unitDefID)
+    local function removeFromUnitCacheInternal(cache, teamID, unitID, value)
+        if unitCache[teamID][cache] then
+            if unitCache[teamID][cache][unitID] then
+                if cachedTotals[teamID][cache] then
+                    local valueToRemove = 0
+                    if unitCache[cache].remove then
+                        valueToRemove = unitCache[cache].remove(unitID, value)
+                    end
+                    cachedTotals[teamID][cache] = cachedTotals[teamID][cache] - valueToRemove
+                end
+                unitCache[teamID][cache][unitID] = nil
+            else
+                Spring.Echo(string.format("WARNING: removeFromUnitCache(), unitID %d not in unit cache", unitID))
+            end
+        end
+    end
+
+    if unitDefsToTrack.reclaimerUnitDefs[unitDefID] then
+        removeFromUnitCacheInternal("reclaimerUnits", teamID, unitID,
+                       unitDefsToTrack.reclaimerUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.energyConverterDefs[unitDefID] then
+        removeFromUnitCacheInternal("energyConverters", teamID, unitID,
+                       unitDefsToTrack.energyConverterDefs[unitDefID])
+    end
+    if unitDefsToTrack.buildPowerDefs[unitDefID] then
+        removeFromUnitCacheInternal("buildPower", teamID, unitID,
+                       unitDefsToTrack.buildPowerDefs[unitDefID])
+    end
+    if unitDefsToTrack.armyUnitDefs[unitDefID] then
+        removeFromUnitCacheInternal("armyUnits", teamID, unitID,
+                       unitDefsToTrack.armyUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.defenseUnitDefs[unitDefID] then
+        removeFromUnitCacheInternal("defenseUnits", teamID, unitID,
+                       unitDefsToTrack.defenseUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.utilityUnitDefs[unitDefID] then
+        removeFromUnitCacheInternal("utilityUnits", teamID, unitID,
+                       unitDefsToTrack.utilityUnitDefs[unitDefID])
+    end
+    if unitDefsToTrack.economyBuildingDefs[unitDefID] then
+        removeFromUnitCacheInternal("economyBuildings", teamID, unitID,
+                       unitDefsToTrack.economyBuildingDefs[unitDefID])
+    end
+end
+
+local function buildUnitCache()
+    unitCache = {}
+    cachedTotals = {}
+
+    unitCache.reclaimerUnits = {
+        add = nil,
+        update = function(unitID, value)
+            local reclaimMetal = 0
+            local reclaimEnergy = 0
+            local metalMake, metalUse, energyMake, energyUse = Spring.GetUnitResources(unitID)
+            if metalMake then
+                if value[1] then
+                    reclaimMetal = metalMake - value[1]
+                else
+                    reclaimMetal = metalMake
+                end
+                if value[2] then
+                    reclaimEnergy = energyMake - value[2]
+                else
+                    reclaimEnergy = energyMake
+                end
+            end
+            return { reclaimMetal, reclaimEnergy }
+        end,
+        remove = nil,
+    }
+    unitCache.energyConverters = {
+        add = nil,
+        update = function(unitID, value)
+            local metalMake, metalUse, energyMake, energyUse = Spring.GetUnitResources(unitID)
+            if metalMake then
+                return metalMake
+            end
+            return 0
+        end,
+        remove = nil,
+    }
+    unitCache.buildPower = {
+        add = function(unitID, value)
+            return value
+        end,
+        update = nil,
+        remove = function(unitID, value)
+            return value
+        end,
+    }
+    unitCache.armyUnits = {
+        add = function(unitID, value)
+            local result = value[1]
+            if options.useMetalEquivalent70 then
+                result = result + (value[2] / 70)
+            end
+            return result
+        end,
+        update = nil,
+        remove = function(unitID, value)
+            local result = value[1]
+            if options.useMetalEquivalent70 then
+                result = result + (value[2] / 70)
+            end
+            return result
+        end,
+    }
+    unitCache.defenseUnits = unitCache.armyUnits
+    unitCache.utilityUnits = unitCache.armyUnits
+    unitCache.economyBuildings = unitCache.armyUnits
+
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            local teamList = Spring.GetTeamList(allyID)
+            for _, teamID in ipairs(teamList) do
+                unitCache[teamID] = {}
+                cachedTotals[teamID] = {}
+                unitCache[teamID].reclaimerUnits = {}
+                cachedTotals[teamID].reclaimerUnits = 0
+                unitCache[teamID].energyConverters = {}
+                cachedTotals[teamID].energyConverters = 0
+                unitCache[teamID].buildPower = {}
+                cachedTotals[teamID].buildPower = 0
+                unitCache[teamID].armyUnits = {}
+                cachedTotals[teamID].armyUnits = 0
+                unitCache[teamID].defenseUnits = {}
+                cachedTotals[teamID].defenseUnits = 0
+                unitCache[teamID].utilityUnits = {}
+                cachedTotals[teamID].utilityUnits = 0
+                unitCache[teamID].economyBuildings = {}
+                cachedTotals[teamID].economyBuildings = 0
+                local unitIDs = Spring.GetTeamUnits(teamID)
+                for i=1,#unitIDs do
+                    local unitID = unitIDs[i]
+                    if not Spring.GetUnitIsBeingBuilt(unitID) then
+                        local unitDefID = Spring.GetUnitDefID(unitID)
+                        addToUnitCache(teamID, unitID, unitDefID)
+                    end
+                end
+            end
+        end
+    end
+end
+
 
 local function makeDarkerColor(color, factor, alpha)
     local newColor = {}
@@ -349,7 +604,7 @@ end
 
 local function teamHasCommander(teamID)
     local hasCom = false
-	for commanderDefID, _ in pairs(comDefs) do
+	for commanderDefID, _ in pairs(unitDefsToTrack.commanderUnitDefs) do
 		if Spring.GetTeamUnitDefCount(teamID, commanderDefID) > 0 then
 			local unitList = Spring.GetTeamUnitsByDefs(teamID, commanderDefID)
 			for i = 1, #unitList do
@@ -383,53 +638,84 @@ local function getAmountOfTeams()
     return amountOfTeams
 end
 
-local function getAmountOfMetrics()
-    return #metricsAvailable
+local function getMetricFromID(id)
+    for _,metric in ipairs(metricsEnabled) do
+        if metric.id == id then
+            return metric
+        end
+    end
+    return nil
 end
 
 local function getMetricChosen()
-    for _, currentMetric in ipairs(metricsAvailable) do
-        if metricChosenID == currentMetric.id then
+    for _, currentMetric in ipairs(metricsEnabled) do
+        if metricChosenKey == currentMetric.key then
             return currentMetric
         end
     end
     return nil
 end
 
-local function getAmountOfVSModeMetrics()
-    return #vsModeMetrics
+local updateHeaderTooltip -- symbol declaration, function definition later
+local function setMetricChosen(metricKey, ignoreUpdateHeader)
+    local metricChosenKeyOld = metricChosenKey
+    metricChosenKey = metricKey
+    local metricChosen = getMetricChosen()
+    if not metricChosen then
+        metricChosenKey = metricChosenKeyOld
+        return
+    end
+
+    if ignoreUpdateHeader then
+        return
+    end
+
+    headerLabel = metricChosen.title
+    updateHeaderTooltip()
 end
 
-local function buildUnitCache()
-    unitCache = {}
-
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            local teamList = Spring.GetTeamList(allyID)
-            for _, teamID in ipairs(teamList) do
-                unitCache[teamID] = {}
-                unitCache[teamID].buildPower = 0
-                unitCache[teamID].buildPowerUnits = {}
-                unitCache[teamID].armyValue = 0
-                unitCache[teamID].armyUnits = {}
-                local unitIDs = Spring.GetTeamUnits(teamID)
-                for i=1,#unitIDs do
-                    local unitID = unitIDs[i]
-                    if not Spring.GetUnitIsBeingBuilt(unitID) then
-                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                        if buildPowerUnitDefs[currentUnitDefID] then
-                            unitCache[teamID].buildPower = unitCache[teamID].buildPower + buildPowerUnitDefs[currentUnitDefID]
-                            unitCache[teamID].buildPowerUnits[unitID] = buildPowerUnitDefs[currentUnitDefID]
-                        end
-                        if armyUnitDefs[currentUnitDefID] then
-                            unitCache[teamID].armyValue = unitCache[teamID].armyValue + armyUnitDefs[currentUnitDefID]
-                            unitCache[teamID].armyUnits[unitID] = armyUnitDefs[currentUnitDefID]
-                        end
-                    end
-                end
+local function buildMetricsEnabled()
+    metricsEnabled = {}
+    local metricChosenEnabled = false
+    index = 1
+    for _,metric in ipairs(metricsAvailable) do
+        local key = metric.key
+        if options.metrics[key] then
+            local metricEnabled = table.copy(metric)
+            metricEnabled.id = index
+            metricsEnabled[index] = metricEnabled
+            if metricChosenKey == metricEnabled.key then
+                metricChosenEnabled = true
             end
+            index = index + 1
         end
     end
+
+    -- nasty hack: currently, widget always requires at least one metric to be enabled.
+    -- in case user disables all metrics, just hard-code the widget to enable back the first metric.
+    -- this causes a nasty confusion where options think the first metric is disabled, while it isn't.
+    -- however, after enabling any metric, options and widget are in sync again.
+    if #metricsEnabled == 0 then
+        local firstMetricAvailable = table.copy(metricsAvailable[1])
+        firstMetricAvailable.id = 1
+        metricsEnabled[1] = firstMetricAvailable
+        options.metrics[firstMetricAvailable.key]= true
+    end
+
+    if not metricChosenEnabled then
+        local firstAvailableMetric = metricsEnabled[1]
+        setMetricChosen(firstAvailableMetric.key)
+    end
+end
+
+local function getAmountOfMetrics()
+    local totalMetricsAvailable = 0
+    for _,metric in ipairs(metricsEnabled) do
+        if metric then
+            totalMetricsAvailable = totalMetricsAvailable + 1
+        end
+    end
+    return totalMetricsAvailable
 end
 
 local function sortStats()
@@ -505,7 +791,93 @@ local function sortStats()
     return result
 end
 
-local function updateStatsNormalMode(statToUpdate)
+local function getOneStat(statKey, teamID)
+    local result = 0
+
+    if statKey == "metalIncome" then
+        result = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
+        if options.subtractReclaimFromIncome then
+            local metalReclaim = getOneStat("reclaimMetalIncome", teamID)
+            result = result - metalReclaim
+        end
+    elseif statKey == "reclaimMetalIncome" then
+        for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
+            result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[1]
+        end
+        result = math.max(0, result)
+    elseif statKey == "energyConversionMetalIncome" then
+        for unitID,_ in pairs(unitCache[teamID].energyConverters) do
+            result = result + unitCache.energyConverters.update(unitID, 0)
+        end
+    elseif statKey == "energyIncome" then
+        result = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
+        if options.subtractReclaimFromIncome then
+            local energyReclaim = getOneStat("reclaimEnergyIncome", teamID)
+            result = result - energyReclaim
+        end
+    elseif statKey == "reclaimEnergyIncome" then
+        for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
+            result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[2]
+        end
+        result = math.max(0, result)
+    elseif statKey == "buildPower" then
+        result = cachedTotals[teamID].buildPower
+    elseif statKey == "metalProduced" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        if statsHistory and #statsHistory > 0 then
+            result = statsHistory[1].metalProduced
+        end
+    elseif statKey == "energyProduced" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        if statsHistory and #statsHistory > 0 then
+            result = statsHistory[1].energyProduced
+        end
+    elseif statKey == "armyValue" then
+        result = cachedTotals[teamID].armyUnits
+    elseif statKey == "defenseValue" then
+        result = cachedTotals[teamID].defenseUnits
+    elseif statKey == "utilityValue" then
+        result = cachedTotals[teamID].utilityUnits
+    elseif statKey == "economyValue" then
+        result = cachedTotals[teamID].economyBuildings
+    elseif statKey == "damageDealt" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        local damageDealt = 0
+        if statsHistory and #statsHistory > 0 then
+            damageDealt = statsHistory[1].damageDealt
+        end
+        result = damageDealt
+    elseif statKey == "damageReceived" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        local damageReceived = 0
+        if statsHistory and #statsHistory > 0 then
+            damageReceived = statsHistory[1].damageReceived
+        end
+        result = damageReceived
+    elseif statKey == "damageEfficiency" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        local damageDealt = 0
+        local damageReceived = 0
+        if statsHistory and #statsHistory > 0 then
+            damageDealt = statsHistory[1].damageDealt
+            damageReceived = statsHistory[1].damageReceived
+        end
+        if damageReceived < 1 then
+            -- avoid dividing by 0
+            damageReceived = 1
+        end
+        result = math.floor(damageDealt * 100 / damageReceived)
+    end
+
+    return round(result)
+end
+
+local function updateStatsNormalMode(statKey)
     teamStats = {}
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
         if allyID ~= gaiaAllyID then
@@ -524,61 +896,7 @@ local function updateStatsNormalMode(statToUpdate)
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
                 teamStats[allyID][teamID].captainID = teamList[1]
 
-                local value = 0
-                if statToUpdate == "Metal Income" then
-                    value = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
-                elseif statToUpdate == "Metal Produced" then
-                    local historyMax = Spring.GetTeamStatsHistory(teamID)
-                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                    if statsHistory and #statsHistory > 0 then
-                        value = statsHistory[1].metalProduced
-                    end
-                elseif statToUpdate == "Build Power" then
-                    value = unitCache[teamID].buildPower
-                elseif statToUpdate == "Army Value" then
-                    value = unitCache[teamID].armyValue
-                elseif statToUpdate == "Army Size" then
-                    local unitIDs = Spring.GetTeamUnits(teamID)
-                    local armySizeTotal = 0
-                    for i = 1, #unitIDs do
-                        local unitID = unitIDs[i]
-                        local currentUnitDefID = Spring.GetUnitDefID(unitID)
-                        if isArmyUnit(currentUnitDefID) and not Spring.GetUnitIsBeingBuilt(unitID)then
-                            armySizeTotal = armySizeTotal + 1
-                        end
-                    end
-                    value = armySizeTotal
-                elseif statToUpdate == "Damage Done" then
-                    local historyMax = Spring.GetTeamStatsHistory(teamID)
-                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                    local damageDealt = 0
-                    if statsHistory and #statsHistory > 0 then
-                        damageDealt = statsHistory[1].damageDealt
-                    end
-                    value = damageDealt
-                elseif statToUpdate == "Damage Received" then
-                    local historyMax = Spring.GetTeamStatsHistory(teamID)
-                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                    local damageReceived = 0
-                    if statsHistory and #statsHistory > 0 then
-                        damageReceived = statsHistory[1].damageReceived
-                    end
-                    value = damageReceived
-                elseif statToUpdate == "Damage Efficiency" then
-                    local historyMax = Spring.GetTeamStatsHistory(teamID)
-                    local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                    local damageDealt = 0
-                    local damageReceived = 0
-                    if statsHistory and #statsHistory > 0 then
-                        damageDealt = statsHistory[1].damageDealt
-                        damageReceived = statsHistory[1].damageReceived
-                    end
-                    if damageReceived < 1 then
-                        -- avoid dividing by 0
-                        damageReceived = 1
-                    end
-                    value = math.floor(damageDealt * 100 / damageReceived)
-                end
+                local value = getOneStat(statKey, teamID)
                 teamStats[allyID][teamID].value = value
             end
         end
@@ -594,62 +912,30 @@ local function updateStatsVSMode()
             -- use color of captain
             local colorRed, colorGreen, colorBlue, colorAlpha = Spring.GetTeamColor(teamList[1])
             vsModeStats[allyID].color = { colorRed, colorGreen, colorBlue, colorAlpha }
-            local metalIncomeTotal = 0
-            local energyIncomeTotal = 0
-            local buildPowerTotal = 0
-            local metalProducedTotal = 0
-            local energyProducedTotal = 0
-            local armyValueTotal = 0
-            local damageDoneTotal = 0
-            for _, teamID in ipairs(teamList) do
+
+            -- build team list and assign colors
+            for _,teamID in ipairs(teamList) do
                 vsModeStats[allyID][teamID] = {}
                 vsModeStats[allyID][teamID].color = { Spring.GetTeamColor(teamID) }
-                local historyMax = Spring.GetTeamStatsHistory(teamID)
-                local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
-                local teamMetalIncome = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
-                local teamEnergyIncome = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
-                local teamBuildPower = 0
-                local teamMetalProduced = 0
-                local teamEnergyProduced = 0
-                local teamDamageDone = 0
-                if statsHistory and #statsHistory > 0 then
-                    teamMetalProduced = statsHistory[1].metalProduced
-                    teamEnergyProduced = statsHistory[1].energyProduced
-                    teamDamageDone = statsHistory[1].damageDealt
-                end
-                local teamArmyValueTotal = 0
-                teamBuildPower = unitCache[teamID].buildPower
-                teamArmyValueTotal = unitCache[teamID].armyValue
-                vsModeStats[allyID][teamID].metalIncome = teamMetalIncome
-                metalIncomeTotal = metalIncomeTotal + teamMetalIncome
-                vsModeStats[allyID][teamID].energyIncome = teamEnergyIncome
-                energyIncomeTotal = energyIncomeTotal + teamEnergyIncome
-                vsModeStats[allyID][teamID].buildPower = teamBuildPower
-                buildPowerTotal = buildPowerTotal + teamBuildPower
-                vsModeStats[allyID][teamID].metalProduced = teamMetalProduced
-                metalProducedTotal = metalProducedTotal + teamMetalProduced
-                vsModeStats[allyID][teamID].energyProduced = teamEnergyProduced
-                energyProducedTotal = energyProducedTotal + teamEnergyProduced
-                vsModeStats[allyID][teamID].armyValue = teamArmyValueTotal
-                armyValueTotal = armyValueTotal + teamArmyValueTotal
-                vsModeStats[allyID][teamID].damageDone = teamDamageDone
-                damageDoneTotal = damageDoneTotal + teamDamageDone
             end
-            vsModeStats[allyID].metalIncome = metalIncomeTotal
-            vsModeStats[allyID].energyIncome = energyIncomeTotal
-            vsModeStats[allyID].buildPower = buildPowerTotal
-            vsModeStats[allyID].metalProduced = metalProducedTotal
-            vsModeStats[allyID].energyProduced = energyProducedTotal
-            vsModeStats[allyID].armyValue = armyValueTotal
-            vsModeStats[allyID].damageDone = damageDoneTotal
+
+            -- fetch metrics
+            for _,metric in ipairs(metricsEnabled) do
+                local valueAllyTeam = 0
+                for _,teamID in ipairs(teamList) do
+                    local valueTeam = getOneStat(metric.key, teamID)
+                    vsModeStats[allyID][teamID][metric.key] = valueTeam
+                    valueAllyTeam = valueAllyTeam + valueTeam
+                end
+                vsModeStats[allyID][metric.key] = valueAllyTeam
+            end
         end
     end
 end
 
 local function updateStats()
     if not vsMode then
-        local metricChosenTitle = getMetricChosen().title
-        updateStatsNormalMode(metricChosenTitle)
+        updateStatsNormalMode(metricChosenKey)
     else
         updateStatsVSMode()
     end
@@ -788,7 +1074,7 @@ local function calculateWidgetSize()
     vsModeKnobHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricKnobPadding * 2
     vsModeKnobWidth = vsModeKnobHeight * 5
 
-    vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfVSModeMetrics()
+    vsModeMetricsAreaHeight = vsModeMetricHeight * getAmountOfMetrics()
 
     if not vsMode then
         widgetDimensions.height = headerDimensions.height + statsAreaHeight
@@ -854,7 +1140,7 @@ local function drawHeader()
     font:End()
 end
 
-local function updateHeaderTooltip()
+updateHeaderTooltip = function ()
     if WG['tooltip'] then
         local metricChosen = getMetricChosen()
         local tooltipText = metricChosen.tooltip
@@ -936,19 +1222,19 @@ local function updateVSModeTooltips()
     local iconRight = iconLeft + vsModeMetricIconWidth
 
     if WG['tooltip'] then
-        for _, vsModeMetric in ipairs(vsModeMetrics) do
-            local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+        for _, metric in ipairs(metricsEnabled) do
+            local bottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
             local top = bottom + vsModeMetricHeight
 
             local iconBottom = bottom + borderPadding + vsModeMetricIconPadding
             local iconTop = iconBottom + vsModeMetricIconHeight
 
             WG['tooltip'].AddTooltip(
-                string.format("spectator_hud_vsmode_%d", vsModeMetric.id),
+                string.format("spectator_hud_vsmode_%d", metric.id),
                 { iconLeft, iconBottom, iconRight, iconTop },
-                vsModeMetric.tooltip,
+                metric.tooltip,
                 nil,
-                vsModeMetric.metric
+                metric.title
             )
         end
     end
@@ -986,8 +1272,8 @@ end
 
 local function deleteVSModeTooltips()
     if WG['tooltip'] then
-        for _, vsModeMetric in ipairs(vsModeMetrics) do
-            WG['tooltip'].RemoveTooltip(string.format("spectator_hud_vsmode_%d", vsModeMetric.id))
+        for _, metric in ipairs(metricsEnabled) do
+            WG['tooltip'].RemoveTooltip(string.format("spectator_hud_vsmode_%d", metric.id))
         end
     end
 end
@@ -1136,8 +1422,8 @@ end
 
 local function createVSModeBackgroudDisplayLists()
     vsModeBackgroundDisplayLists = {}
-    for _, vsModeMetric in ipairs(vsModeMetrics) do
-        local currentBottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+    for _, metric in ipairs(metricsEnabled) do
+        local currentBottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
         local currentTop = currentBottom + vsModeMetricHeight
         local currentDisplayList = gl.CreateList(function ()
             WG.FlowUI.Draw.Element(
@@ -1471,8 +1757,8 @@ end
 local function drawVSModeMetrics()
     local indexLeft = 1
     local indexRight = 0
-    for _, vsModeMetric in ipairs(vsModeMetrics) do
-        local bottom = vsModeMetricsAreaTop - vsModeMetric.id * vsModeMetricHeight
+    for _, metric in ipairs(metricsEnabled) do
+        local bottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
 
         local iconLeft = vsModeMetricsAreaLeft + borderPadding + vsModeMetricIconPadding
@@ -1482,7 +1768,7 @@ local function drawVSModeMetrics()
 
         local iconHCenter = math.floor((iconRight + iconLeft) / 2)
         local iconVCenter = math.floor((iconTop + iconBottom) / 2)
-        local iconText = vsModeMetric.text
+        local iconText = metric.text
 
         font:Begin()
             font:SetTextColor({ 1, 1, 1, 1 })
@@ -1505,7 +1791,7 @@ local function drawVSModeMetrics()
             leftKnobRight,
             leftKnobTop,
             makeDarkerColor(vsModeStats[indexLeft].color, constants.darkerSideKnobsFactor),
-            formatResources(vsModeStats[indexLeft][vsModeMetric.key], true)
+            formatResources(vsModeStats[indexLeft][metric.key], true)
         )
 
         local rightKnobRight = vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2
@@ -1518,14 +1804,14 @@ local function drawVSModeMetrics()
             rightKnobRight,
             rightKnobTop,
             makeDarkerColor(vsModeStats[indexRight].color, constants.darkerSideKnobsFactor),
-            formatResources(vsModeStats[indexRight][vsModeMetric.key], true)
+            formatResources(vsModeStats[indexRight][metric.key], true)
         )
 
         local leftTeamValues = {}
         local leftTeamIDs = Spring.GetTeamList(indexLeft)
         for _, teamID in ipairs(leftTeamIDs) do
             table.insert(leftTeamValues, {
-                value = vsModeStats[indexLeft][teamID][vsModeMetric.key],
+                value = vsModeStats[indexLeft][teamID][metric.key],
                 color = vsModeStats[indexLeft][teamID].color
             })
         end
@@ -1534,7 +1820,7 @@ local function drawVSModeMetrics()
         local rightTeamIDs = Spring.GetTeamList(indexRight)
         for _, teamID in ipairs(rightTeamIDs) do
             table.insert(rightTeamValues, {
-                value = vsModeStats[indexRight][teamID][vsModeMetric.key],
+                value = vsModeStats[indexRight][teamID][metric.key],
                 color = vsModeStats[indexRight][teamID].color
             })
         end
@@ -1544,13 +1830,13 @@ local function drawVSModeMetrics()
             iconBottom,
             rightKnobLeft,
             iconTop,
-            vsModeStats[indexLeft][vsModeMetric.key],
-            vsModeStats[indexRight][vsModeMetric.key],
+            vsModeStats[indexLeft][metric.key],
+            vsModeStats[indexRight][metric.key],
             vsModeStats[indexLeft].color,
             vsModeStats[indexRight].color,
             leftTeamValues,
             rightTeamValues,
-            vsModeMetric.metric
+            metric.title
         )
     end
 end
@@ -1575,7 +1861,7 @@ local function mySelector(px, py, sx, sy)
 	gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
 
 	-- button
-	WG.FlowUI.Draw.RectRound(sx-(sy-py), py, sx, sy, cs, 1, 1, 1, 1, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.14 })
+	WG.FlowUI.Draw.RectRound(px, py, sx, sy, cs, 1, 1, 1, 1, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.14 })
 	--WG.FlowUI.Draw.Button(sx-(sy-py), py, sx, sy, 1, 1, 1, 1, 1,1,1,1, nil, { 1, 1, 1, 0.1 }, nil, cs)
 end
 
@@ -1608,7 +1894,7 @@ local function drawMetricChange()
         font:SetTextColor({ 1, 1, 1, 1 })
         local distanceFromTop = 0
         local amountOfMetrics = getAmountOfMetrics()
-        for _, currentMetric in ipairs(metricsAvailable) do
+        for _, currentMetric in ipairs(metricsEnabled) do
             local textLeft = headerDimensions.left + borderPadding + headerLabelPadding
             local textBottom = metricChangeBottom + borderPadding + headerLabelPadding +
                 (amountOfMetrics - distanceFromTop - 1) * headerDimensions.height
@@ -1658,6 +1944,8 @@ local function deleteVSModeBackgroudDisplayLists()
 end
 
 local function init()
+    buildMetricsEnabled()
+
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
 
     widgetDimensions = {}
@@ -1688,6 +1976,7 @@ local function init()
         updateVSModeTooltips()
     end
 
+    buildUnitDefs()
     buildUnitCache()
 
     updateStats()
@@ -1736,16 +2025,56 @@ local function checkAndUpdateHaveFullView()
     return haveFullView ~= haveFullViewOld
 end
 
-local function setMetricChosen(metricID)
-    if metricID < 1 or metricID > getAmountOfMetrics() then
-        return
+local function registerOptions()
+    if WG['options'] then
+        for _,metric in ipairs(metricsAvailable) do
+            local currentOptionSpec = {}
+            currentOptionSpec.widgetname = "SpectatorHUD" -- note: must be same as in widget:GetInfo()
+            currentOptionSpec.id = "metrics_" .. metric.key
+            currentOptionSpec.value = options.metrics[metric.key]
+            currentOptionSpec.name = "Show " .. metric.title
+            currentOptionSpec.description = metric.tooltip
+            currentOptionSpec.type = "bool"
+            currentOptionSpec.onchange = function(i, value)
+                options.metrics[metric.key] = value
+                reInit()
+            end
+            WG['options'].addOption(currentOptionSpec)
+        end
+
+        local optionSpecUseME70 = {
+            widgetname = "SpectatorHUD",
+            id = "useMetalEquivalent70",
+            value = options.useMetalEquivalent70,
+            name = "Use Metal Equivalent 70",
+            description = "When displaying metal costs, add energy cost by scaling energy to metal as 70:1",
+            type = "bool",
+            onchange = function(i, value) options.useMetalEquivalent70 = value end,
+        }
+        WG['options'].addOption(optionSpecUseME70)
+        local optionSpecSubtractReclaim = {
+            widgetname = "SpectatorHUD",
+            id = "subtractReclaimFromIncome",
+            value = options.subtractReclaimFromIncome,
+            name = "Subtract Reclaim From Income",
+            description = "Subtract reclaim from income numbers",
+            type = "bool",
+            onchange = function(i, value) options.subtractReclaimFromIncome = value end,
+        }
+        WG['options'].addOption(optionSpecSubtractReclaim)
     end
+end
 
-    metricChosenID = metricID
+local function teardownOptions()
+    if WG['options'] then
+        for _,metric in ipairs(metricsAvailable) do
+            local optionName = "metrics_" .. metric.key
+            WG['options'].removeOption(optionName)
+        end
 
-    local metricChosen = getMetricChosen()
-    headerLabel = metricChosen.title
-    updateHeaderTooltip()
+        WG['options'].removeOption("useMetalEquivalent70")
+        WG['options'].removeOption("subtractReclaimFromIncome")
+    end
 end
 
 function widget:Initialize()
@@ -1753,11 +2082,15 @@ function widget:Initialize()
 
     font = WG['fonts'].getFont()
 
+    registerOptions()
+
     init()
 end
 
 function widget:Shutdown()
     deInit()
+
+    teardownOptions()
 end
 
 function widget:TeamDied(teamID)
@@ -1774,14 +2107,7 @@ function widget:UnitFinished(unitID, unitDefID, unitTeam)
     end
 
     if unitCache[unitTeam] then
-        if armyUnitDefs[unitDefID] then
-            unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue + armyUnitDefs[unitDefID]
-            unitCache[unitTeam].armyUnits[unitID] = armyUnitDefs[unitDefID]
-        end
-        if buildPowerUnitDefs[unitDefID] then
-            unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower + buildPowerUnitDefs[unitDefID]
-            unitCache[unitTeam].buildPowerUnits[unitID] = buildPowerUnitDefs[unitDefID]
-        end
+        addToUnitCache(unitTeam, unitID, unitDefID)
     end
 end
 
@@ -1790,26 +2116,17 @@ function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
         return
     end
 
+    -- only track units that have been completely built
+    if Spring.GetUnitIsBeingBuilt(unitID) then
+        return
+    end
+
     if unitCache[oldTeam] then
-        if unitCache[oldTeam].armyUnits[unitID] then
-            unitCache[oldTeam].armyValue = unitCache[oldTeam].armyValue - unitCache[oldTeam].armyUnits[unitID]
-            unitCache[oldTeam].armyUnits[unitID] = nil
-        end
-        if unitCache[oldTeam].buildPowerUnits[unitID] then
-            unitCache[oldTeam].buildPower = unitCache[oldTeam].buildPower - unitCache[oldTeam].buildPowerUnits[unitID]
-            unitCache[oldTeam].buildPowerUnits[unitID] = nil
-        end
+        removeFromUnitCache(oldTeam, unitID, unitDefID)
     end
 
     if unitCache[newTeam] then
-        if armyUnitDefs[unitDefID] then
-            unitCache[newTeam].armyValue = unitCache[newTeam].armyValue + armyUnitDefs[unitDefID]
-            unitCache[newTeam].armyUnits[unitID] = armyUnitDefs[unitDefID]
-        end
-        if buildPowerUnitDefs[unitDefID] then
-            unitCache[newTeam].buildPower = unitCache[newTeam].buildPower + buildPowerUnitDefs[unitDefID]
-            unitCache[newTeam].buildPowerUnits[unitID] = buildPowerUnitDefs[unitDefID]
-        end
+        addToUnitCache(newTeam, unitID, unitDefID)
     end
 end
 
@@ -1818,15 +2135,13 @@ function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerD
         return
     end
 
+    -- unit might've been a nanoframe
+    if Spring.GetUnitIsBeingBuilt(unitID) then
+        return
+    end
+
     if unitCache[unitTeam] then
-        if unitCache[unitTeam].armyUnits[unitID] then
-            unitCache[unitTeam].armyValue = unitCache[unitTeam].armyValue - unitCache[unitTeam].armyUnits[unitID]
-            unitCache[unitTeam].armyUnits[unitID] = nil
-        end
-        if unitCache[unitTeam].buildPowerUnits[unitID] then
-            unitCache[unitTeam].buildPower = unitCache[unitTeam].buildPower - unitCache[unitTeam].buildPowerUnits[unitID]
-            unitCache[unitTeam].buildPowerUnits[unitID] = nil
-        end
+        removeFromUnitCache(unitTeam, unitID, unitDefID)
     end
 end
 
@@ -1859,8 +2174,9 @@ function widget:MousePress(x, y, button)
                 (y > metricChangeBottom) and (y < headerDimensions.top) then
             -- no change if user pressed header
             if (y < headerDimensions.bottom) then
-                local metricPressed = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerDimensions.height)
-                setMetricChosen(metricPressed)
+                local metricID = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerDimensions.height)
+                local metric = getMetricFromID(metricID)
+                setMetricChosen(metric.key)
                 if vsMode then
                     vsMode = false
                     tearDownVSMode()
@@ -1977,32 +2293,59 @@ function widget:DrawScreen()
 end
 
 function widget:GetConfigData()
-    return {
+    local result = {
         widgetScale = widgetScale,
-        metricChosenID = metricChosenID,
+        metricChosenKey = metricChosenKey,
         sortingChosen = sortingChosen,
         vsMode = vsMode,
+
+        useMetalEquivalent70 = options.useMetalEquivalent70,
+        subtractReclaimFromIncome = options.subtractReclaimFromIncome,
     }
+
+    for _,metric in ipairs(metricsAvailable) do
+        local configKey = "metrics_" .. metric.key
+        local value
+        if options.metrics[metric.key] then
+            value = options.metrics[metric.key]
+        else
+            value = metric.defaultValue
+        end
+
+        result[configKey] = value
+    end
+
+    return result
 end
 
 function widget:SetConfigData(data)
     if data.widgetScale then
         widgetScale = data.widgetScale
     end
-    if data.metricChosenID then
-        metricChosenID = data.metricChosenID
-        local metricChosen = getMetricChosen(metricChosenID)
-        if metricChosen then
-            headerLabel = metricChosen.title
-        else
-            metricChosen = 1
-            headerLabel = "Metal Income"
-        end
+    if data.metricChosenKey then
+        metricChosen = data.metricChosenKey
     end
     if data.sortingChosen then
         sortingChosen = data.sortingChosen
     end
     if data.vsMode then
         vsMode = data.vsMode
+    end
+
+    if data.useMetalEquivalent70 then
+        options.useMetalEquivalent70 = data.useMetalEquivalent70
+    end
+    if data.subtractReclaimFromIncome then
+        options.subtractReclaimFromIncome = data.subtractReclaimFromIncome
+    end
+
+    options.metrics = {}
+    for _,metric in ipairs(metricsAvailable) do
+        local configKey = "metrics_" .. metric.key
+        local value = metric.defaultValue
+        if data[configKey] then
+            value = data[configKey]
+        end
+        options.metrics[metric.key] = value
     end
 end
