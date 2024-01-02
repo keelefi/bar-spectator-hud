@@ -2106,6 +2106,11 @@ function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
         return
     end
 
+    -- only track units that have been completely built
+    if Spring.GetUnitIsBeingBuilt(unitID) then
+        return
+    end
+
     if unitCache[oldTeam] then
         removeFromUnitCache(oldTeam, unitID, unitDefID)
     end
@@ -2117,6 +2122,11 @@ end
 
 function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
     if not haveFullView then
+        return
+    end
+
+    -- unit might've been a nanoframe
+    if Spring.GetUnitIsBeingBuilt(unitID) then
         return
     end
 
