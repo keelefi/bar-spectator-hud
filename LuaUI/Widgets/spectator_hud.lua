@@ -264,6 +264,14 @@ local options = {
     useMetalEquivalent70 = false,
     subtractReclaimFromIncome = false,
 }
+-- silly hack to serve first load of widget
+if not options.metrics then
+    options.metrics = {}
+    for _,metric in ipairs(metricsAvailable) do
+        options.metrics[metric.key] = metric.defaultValue
+    end
+end
+
 
 local unitCache = {}
 local cachedTotals = {}
