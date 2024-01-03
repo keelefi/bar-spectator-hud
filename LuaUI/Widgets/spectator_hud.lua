@@ -691,7 +691,17 @@ local function buildMetricsEnabled()
         end
     end
 
-    -- TODO: what to do if no metric is enabled?
+    -- nasty hack: currently, widget always requires at least one metric to be enabled.
+    -- in case user disables all metrics, just hard-code the widget to enable back the first metric.
+    -- this causes a nasty confusion where options think the first metric is disabled, while it isn't.
+    -- however, after enabling any metric, options and widget are in sync again.
+    if #metricsEnabled == 0 then
+        local firstMetricAvailable = table.copy(metricsAvailable[1])
+        firstMetricAvailable.id = 1
+        metricsEnabled[1] = firstMetricAvailable
+        options.metrics[firstMetricAvailable.key]= true
+    end
+
     if not metricChosenEnabled then
         local firstAvailableMetric = metricsEnabled[1]
         setMetricChosen(firstAvailableMetric.key)
