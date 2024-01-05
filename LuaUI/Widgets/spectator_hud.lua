@@ -1817,20 +1817,20 @@ local function drawVSModeMetrics()
 
         local leftTeamValues = {}
         local leftTeamIDs = Spring.GetTeamList(indexLeft)
-        for _, teamID in ipairs(leftTeamIDs) do
-            table.insert(leftTeamValues, {
+        for i, teamID in ipairs(leftTeamIDs) do
+            leftTeamValues[i] = {
                 value = vsModeStats[indexLeft][teamID][metric.key],
                 color = vsModeStats[indexLeft][teamID].color
-            })
+            }
         end
 
         local rightTeamValues = {}
         local rightTeamIDs = Spring.GetTeamList(indexRight)
-        for _, teamID in ipairs(rightTeamIDs) do
-            table.insert(rightTeamValues, {
+        for i, teamID in ipairs(rightTeamIDs) do
+            rightTeamValues[i] = {
                 value = vsModeStats[indexRight][teamID][metric.key],
                 color = vsModeStats[indexRight][teamID].color
-            })
+            }
         end
 
         drawVSBar(
