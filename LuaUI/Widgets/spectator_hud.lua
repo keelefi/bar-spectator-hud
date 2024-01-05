@@ -911,8 +911,17 @@ local function updateStatsNormalMode(statKey)
     end
 end
 
-local function updateStatsVSMode()
+local function createVSModeStats()
+    -- This function exists as a performance optimization. On every GameFrame()
+    -- we update vsmode stats. However, rather than recreating tables in Lua
+    -- which would require memory allocation and release and thus extra work for
+    -- the garbage collector, we reuse the same memory over and over. It is in
+    -- this function the memory is allocated.
+    -- As a nice bonus, this function reduces calls to GetTeamColor().
+    -- Note that the counter-part to this function where we release memory is not
+    -- needed as we are not looking to save memory.
     vsModeStats = {}
+
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
         if allyID ~= gaiaAllyID then
             vsModeStats[allyID] = {}
@@ -927,7 +936,22 @@ local function updateStatsVSMode()
                 vsModeStats[allyID][teamID].color = { Spring.GetTeamColor(teamID) }
             end
 
-            -- fetch metrics
+            -- build metrics and assign placeholder values, i.e. zero
+            for _,metric in ipairs(metricsEnabled) do
+                local valueAllyTeam = 0
+                for _,teamID in ipairs(teamList) do
+                    vsModeStats[allyID][teamID][metric.key] = 0
+                end
+                vsModeStats[allyID][metric.key] = 0
+            end
+        end
+    end
+end
+
+local function updateStatsVSMode()
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            local teamList = Spring.GetTeamList(allyID)
             for _,metric in ipairs(metricsEnabled) do
                 local valueAllyTeam = 0
                 for _,teamID in ipairs(teamList) do
@@ -1987,6 +2011,7 @@ local function init()
     buildUnitDefs()
     buildUnitCache()
 
+    createVSModeStats()
     updateStats()
 end
 
