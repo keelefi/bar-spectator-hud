@@ -2035,6 +2035,8 @@ end
 
 local function registerOptions()
     if WG['options'] then
+        local optionTable = {}
+
         for _,metric in ipairs(metricsAvailable) do
             local currentOptionSpec = {}
             currentOptionSpec.widgetname = "SpectatorHUD" -- note: must be same as in widget:GetInfo()
@@ -2047,7 +2049,7 @@ local function registerOptions()
                 options.metrics[metric.key] = value
                 reInit()
             end
-            WG['options'].addOption(currentOptionSpec)
+            table.insert(optionTable, currentOptionSpec)
         end
 
         local optionSpecUseME70 = {
@@ -2059,7 +2061,7 @@ local function registerOptions()
             type = "bool",
             onchange = function(i, value) options.useMetalEquivalent70 = value end,
         }
-        WG['options'].addOption(optionSpecUseME70)
+        table.insert(optionTable, optionSpecUseME70)
         local optionSpecSubtractReclaim = {
             widgetname = "SpectatorHUD",
             id = "subtractReclaimFromIncome",
@@ -2069,19 +2071,25 @@ local function registerOptions()
             type = "bool",
             onchange = function(i, value) options.subtractReclaimFromIncome = value end,
         }
-        WG['options'].addOption(optionSpecSubtractReclaim)
+        table.insert(optionTable, optionSpecSubtractReclaim)
+
+        WG['options'].addOptions(optionTable)
     end
 end
 
 local function teardownOptions()
     if WG['options'] then
+        local optionTable = {}
+
         for _,metric in ipairs(metricsAvailable) do
             local optionName = "metrics_" .. metric.key
-            WG['options'].removeOption(optionName)
+            table.insert(optionTable, optionName)
         end
 
-        WG['options'].removeOption("useMetalEquivalent70")
-        WG['options'].removeOption("subtractReclaimFromIncome")
+        table.insert(optionTable, "useMetalEquivalent70")
+        table.insert(optionTable, "subtractReclaimFromIncome")
+
+        WG['options'].removeOptions(optionTable)
     end
 end
 
