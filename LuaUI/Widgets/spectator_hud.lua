@@ -251,6 +251,8 @@ local sortingChosen = "player"
 local teamStats = {}
 local vsModeStats = {}
 
+local playerData = nil
+
 local images = {
     sortingPlayer = "LuaUI/Images/spectator_hud/sorting-player.png",
     sortingTeam = "LuaUI/Images/spectator_hud/sorting-team.png",
@@ -602,14 +604,6 @@ local function formatResources(amount, short)
     return addSpaces(round(amount))
 end
 
-local function getPlayerName(teamID)
-    local playerID = Spring.GetPlayerList(teamID)
-    if playerID and playerID[1] then
-        return select(1, Spring.GetPlayerInfo(playerID[1], false))
-    end
-    return "dead"
-end
-
 local function teamHasCommander(teamID)
     local hasCom = false
 	for commanderDefID, _ in pairs(unitDefsToTrack.commanderUnitDefs) do
@@ -900,7 +894,7 @@ local function updateStatsNormalMode(statKey)
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
 
-                teamStats[allyID][teamID].name = getPlayerName(teamID)
+                teamStats[allyID][teamID].name = playerData[teamID].name
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
                 teamStats[allyID][teamID].captainID = teamList[1]
 
@@ -2278,6 +2272,32 @@ end
 function widget:GameFrame(frameNum)
     if not haveFullView then
         return
+    end
+
+    -- if it's the first frame we process, then collect player names
+    if (frameNum > 0) and (not playerData) then
+        playerData = {}
+        for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+            if allyID ~= gaiaAllyID then
+                local teamList = Spring.GetTeamList(allyID)
+                for _,teamID in ipairs(teamList) do
+                    local playerID = Spring.GetPlayerList(teamID, false)
+                    local playerName
+                    if playerID and playerID[1] then
+                        playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                    else
+                        playerName = "gone"
+                    end
+
+                    playerData[teamID] = {}
+                    playerData[teamID].name = playerName
+                end
+            end
+        end
+
+        -- TODO: collect player start positions
+
+        -- TODO: from start positions, create ordering for vsmode
     end
 
     if frameNum % statsUpdateFrequency == 1 then
