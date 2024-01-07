@@ -894,7 +894,7 @@ local function updateStatsNormalMode(statKey)
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
 
-                teamStats[allyID][teamID].name = playerData[teamID].name
+                teamStats[allyID][teamID].name = playerData and playerData[teamID].name or "loading"
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
                 teamStats[allyID][teamID].captainID = teamList[1]
 
