@@ -2000,7 +2000,6 @@ end
 
 local function init()
     buildMetricsEnabled()
-    buildPlayerData()
 
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
 
@@ -2151,6 +2150,8 @@ function widget:Initialize()
     font = WG['fonts'].getFont()
 
     registerOptions()
+
+    buildPlayerData()
 
     init()
 end
