@@ -572,6 +572,9 @@ local function buildPlayerData()
 
                 playerData[teamID] = {}
                 playerData[teamID].name = playerName
+
+                local teamColor = { Spring.GetTeamColor(teamID) }
+                playerData[teamID].color = teamColor
             end
         end
     end
@@ -917,11 +920,7 @@ local function updateStatsNormalMode(statKey)
             for _, teamID in ipairs(teamList) do
                 teamStats[allyID][teamID] = {}
 
-                local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(teamID)
-                teamStats[allyID][teamID].colorRed = teamColorRed
-                teamStats[allyID][teamID].colorGreen = teamColorGreen
-                teamStats[allyID][teamID].colorBlue = teamColorBlue
-                teamStats[allyID][teamID].colorAlpha = teamColorAlpha
+                teamStats[allyID][teamID].color = playerData[teamID].color
 
                 teamStats[allyID][teamID].name = playerData[teamID].name
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
@@ -950,8 +949,7 @@ local function createVSModeStats()
             vsModeStats[allyID] = {}
             local teamList = Spring.GetTeamList(allyID)
             -- use color of captain
-            local colorRed, colorGreen, colorBlue, colorAlpha = Spring.GetTeamColor(teamList[1])
-            vsModeStats[allyID].color = { colorRed, colorGreen, colorBlue, colorAlpha }
+            vsModeStats[allyID].color = playerData[teamList[1]].color
 
             -- build team list and assign colors
             for _,teamID in ipairs(teamList) do
@@ -1631,7 +1629,7 @@ local function drawStatsBars()
     for _, currentStat in ipairs(statsSorted) do
         drawAStatsBar(
             index,
-            { currentStat.colorRed, currentStat.colorGreen, currentStat.colorBlue, currentStat.colorAlpha },
+            currentStat.color,
             currentStat.value,
             max,
             currentStat.name,
