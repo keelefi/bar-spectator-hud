@@ -2416,7 +2416,7 @@ function widget:SetConfigData(data)
         widgetScale = data.widgetScale
     end
     if data.metricChosenKey then
-        metricChosen = data.metricChosenKey
+        metricChosenKey = data.metricChosenKey
     end
     if data.sortingChosen then
         sortingChosen = data.sortingChosen
