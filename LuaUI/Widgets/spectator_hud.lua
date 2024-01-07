@@ -547,6 +547,27 @@ local function buildUnitCache()
     end
 end
 
+local function buildPlayerData()
+    playerData = {}
+    playerData.haveStartPositions = false
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            local teamList = Spring.GetTeamList(allyID)
+            for _,teamID in ipairs(teamList) do
+                local playerID = Spring.GetPlayerList(teamID, false)
+                local playerName
+                if playerID and playerID[1] then
+                    playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
+                else
+                    playerName = "(gone)"
+                end
+
+                playerData[teamID] = {}
+                playerData[teamID].name = playerName
+            end
+        end
+    end
+end
 
 local function makeDarkerColor(color, factor, alpha)
     local newColor = {}
@@ -894,7 +915,7 @@ local function updateStatsNormalMode(statKey)
                 teamStats[allyID][teamID].colorBlue = teamColorBlue
                 teamStats[allyID][teamID].colorAlpha = teamColorAlpha
 
-                teamStats[allyID][teamID].name = playerData and playerData[teamID].name or "loading"
+                teamStats[allyID][teamID].name = playerData[teamID].name
                 teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
                 teamStats[allyID][teamID].captainID = teamList[1]
 
@@ -1971,6 +1992,7 @@ end
 
 local function init()
     buildMetricsEnabled()
+    buildPlayerData()
 
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
 
@@ -2274,27 +2296,7 @@ function widget:GameFrame(frameNum)
         return
     end
 
-    -- if it's the first frame we process, then collect player names
-    if (frameNum > 0) and (not playerData) then
-        playerData = {}
-        for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-            if allyID ~= gaiaAllyID then
-                local teamList = Spring.GetTeamList(allyID)
-                for _,teamID in ipairs(teamList) do
-                    local playerID = Spring.GetPlayerList(teamID, false)
-                    local playerName
-                    if playerID and playerID[1] then
-                        playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                    else
-                        playerName = "gone"
-                    end
-
-                    playerData[teamID] = {}
-                    playerData[teamID].name = playerName
-                end
-            end
-        end
-
+    if (frameNum > 0) and (not playerData.haveStartPositions) then
         -- TODO: collect player start positions
 
         -- TODO: from start positions, create ordering for vsmode
