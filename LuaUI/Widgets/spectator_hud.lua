@@ -2084,7 +2084,10 @@ local function registerOptions()
             name = "Use Metal Equivalent 70",
             description = "When displaying metal costs, add energy cost by scaling energy to metal as 70:1",
             type = "bool",
-            onchange = function(i, value) options.useMetalEquivalent70 = value end,
+            onchange = function(i, value)
+                options.useMetalEquivalent70 = value
+                reInit()
+            end,
         }
         table.insert(optionTable, optionSpecUseME70)
         local optionSpecSubtractReclaim = {
