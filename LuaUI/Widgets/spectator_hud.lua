@@ -554,12 +554,20 @@ local function buildPlayerData()
         if allyID ~= gaiaAllyID then
             local teamList = Spring.GetTeamList(allyID)
             for _,teamID in ipairs(teamList) do
+                local playerName = nil
                 local playerID = Spring.GetPlayerList(teamID, false)
-                local playerName
                 if playerID and playerID[1] then
+                    -- it's a player
                     playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
                 else
-                    playerName = "(gone)"
+                    local aiName = Spring.GetGameRulesParam("ainame_" .. teamID)
+                    if aiName then
+                        -- it's AI
+                        playerName = aiName
+                    else
+                        -- player is gone
+                        playerName = "(gone)"
+                    end
                 end
 
                 playerData[teamID] = {}
