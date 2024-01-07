@@ -252,6 +252,7 @@ local teamStats = {}
 local vsModeStats = {}
 
 local playerData = nil
+local teamOrder = nil
 
 local images = {
     sortingPlayer = "LuaUI/Images/spectator_hud/sorting-player.png",
@@ -549,7 +550,6 @@ end
 
 local function buildPlayerData()
     playerData = {}
-    playerData.haveStartPositions = false
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
         if allyID ~= gaiaAllyID then
             local teamList = Spring.GetTeamList(allyID)
@@ -1808,8 +1808,8 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
 end
 
 local function drawVSModeMetrics()
-    local indexLeft = 1
-    local indexRight = 0
+    local indexLeft = teamOrder and teamOrder[1] or 0
+    local indexRight = teamOrder and teamOrder[2] or 1
     for _, metric in ipairs(metricsEnabled) do
         local bottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
@@ -2303,10 +2303,30 @@ function widget:GameFrame(frameNum)
         return
     end
 
-    if (frameNum > 0) and (not playerData.haveStartPositions) then
-        -- TODO: collect player start positions
+    if (frameNum > 0) and (not teamOrder) then
+        -- collect player start positions
+        local teamStartXAverages = {}
+        for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+            if allyID ~= gaiaAllyID then
+                local xAccumulator = 0
+                local teamList = Spring.GetTeamList(allyID)
+                for _,teamID in ipairs(teamList) do
+                    local x, _, _ = Spring.GetTeamStartPosition(teamID)
+                    xAccumulator = xAccumulator + x
+                end
+                local xAverage = xAccumulator / #teamList
+                table.insert(teamStartXAverages, { allyID, xAverage })
+            end
+        end
 
-        -- TODO: from start positions, create ordering for vsmode
+        -- sort averages and create team order (from left to right)
+        table.sort(teamStartXAverages, function (left, right)
+            return left[2] < right[2]
+        end)
+        teamOrder = {}
+        for i,teamStartX in ipairs(teamStartXAverages) do
+            teamOrder[i] = teamStartX[1]
+        end
     end
 
     if frameNum % statsUpdateFrequency == 1 then
