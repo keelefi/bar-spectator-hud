@@ -86,9 +86,6 @@ local toggleVSModeTop, toggleVSModeBottom, toggleVSModeLeft, toggleVSModeRight
 local statsAreaTop, statsAreaBottom, statsAreaLeft, statsAreaRight
 local vsModeMetricsAreaTop, vsModeMetricsAreaBottom, vsModeMetricsAreaLeft, vsModeMetricsAreaRight
 
-local buttonWidgetSizeIncreaseDimensions
-local buttonWidgetSizeDecreaseDimensions
-
 local backgroundShader
 
 local headerLabel = "Metal Income"
@@ -98,8 +95,6 @@ local headerLabelDefault = "Metal Income"
      the widget will keep on resizing depending on the header label.
 ]]
 
-local buttonWidgetSizeIncreaseBackgroundDisplayList
-local buttonWidgetSizeDecreaseBackgroundDisplayList
 local sortingBackgroundDisplayList
 local toggleVSModeBackgroundDisplayList
 
@@ -190,9 +185,6 @@ local defaults = {
 }
 
 local tooltipNames = {}
-
-local buttonWidgetSizeIncreaseTooltipName = "spectator_hud_size_increase"
-local buttonWidgetSizeDecreaseTooltipName = "spectator_hud_size_decrease"
 
 local sortingTooltipName = "spectator_hud_sorting"
 local sortingTooltipTitle = "Sorting"
@@ -999,7 +991,7 @@ local function calculateHeaderSize()
     buttonSideLength = headerDimensions.height
 
     -- currently, we have four buttons
-    headerDimensions.width = widgetDimensions.width - 4 * buttonSideLength
+    headerDimensions.width = widgetDimensions.width - 2 * buttonSideLength
 end
 
 local function calculateStatsBarSize()
@@ -1024,22 +1016,6 @@ local function setToggleVSModePosition()
     toggleVSModeBottom = widgetDimensions.top - buttonSideLength
     toggleVSModeLeft = sortingLeft - buttonSideLength
     toggleVSModeRight = sortingLeft
-end
-
-local function setButtonWidgetSizeIncreasePosition()
-    buttonWidgetSizeIncreaseDimensions = {}
-    buttonWidgetSizeIncreaseDimensions["top"] = widgetDimensions.top
-    buttonWidgetSizeIncreaseDimensions["bottom"] = widgetDimensions.top - buttonSideLength
-    buttonWidgetSizeIncreaseDimensions["left"] = widgetDimensions.right - 4 * buttonSideLength
-    buttonWidgetSizeIncreaseDimensions["right"] = widgetDimensions.right - 3 * buttonSideLength
-end
-
-local function setButtonWidgetSizeDecreasePosition()
-    buttonWidgetSizeDecreaseDimensions = {}
-    buttonWidgetSizeDecreaseDimensions["top"] = widgetDimensions.top
-    buttonWidgetSizeDecreaseDimensions["bottom"] = widgetDimensions.top - buttonSideLength
-    buttonWidgetSizeDecreaseDimensions["left"] = widgetDimensions.right - 3 * buttonSideLength
-    buttonWidgetSizeDecreaseDimensions["right"] = widgetDimensions.right - 2 * buttonSideLength
 end
 
 local function setHeaderPosition()
@@ -1149,8 +1125,6 @@ local function setWidgetPosition()
     setToggleVSModePosition()
     setStatsAreaPosition()
     setVSModeMetricsAreaPosition()
-    setButtonWidgetSizeIncreasePosition()
-    setButtonWidgetSizeDecreasePosition()
 end
 
 local function createBackgroundShader()
@@ -1236,36 +1210,6 @@ local function updateToggleVSModeTooltip()
     end
 end
 
-local function updateButtonWidgetSizeIncreaseTooltip()
-    if WG['tooltip'] then
-        WG['tooltip'].AddTooltip(
-            buttonWidgetSizeIncreaseTooltipName,
-            {
-                buttonWidgetSizeIncreaseDimensions["left"],
-                buttonWidgetSizeIncreaseDimensions["bottom"],
-                buttonWidgetSizeIncreaseDimensions["right"],
-                buttonWidgetSizeIncreaseDimensions["top"]
-            },
-            "Increase Widget Size"
-        )
-    end
-end
-
-local function updateButtonWidgetSizeDecreaseTooltip()
-    if WG['tooltip'] then
-        WG['tooltip'].AddTooltip(
-            buttonWidgetSizeDecreaseTooltipName,
-            {
-                buttonWidgetSizeDecreaseDimensions["left"],
-                buttonWidgetSizeDecreaseDimensions["bottom"],
-                buttonWidgetSizeDecreaseDimensions["right"],
-                buttonWidgetSizeDecreaseDimensions["top"]
-            },
-            "Decrease Widget Size"
-        )
-    end
-end
-
 local function updateVSModeTooltips()
     local iconLeft = vsModeMetricsAreaLeft + borderPadding + vsModeMetricIconPadding
     local iconRight = iconLeft + vsModeMetricIconWidth
@@ -1307,18 +1251,6 @@ local function deleteToggleVSModeTooltip()
     end
 end
 
-local function deleteButtonWidgetSizeIncreaseTooltip()
-    if WG['tooltip'] then
-        WG['tooltip'].RemoveTooltip(buttonWidgetSizeIncreaseTooltipName)
-    end
-end
-
-local function deleteButtonWidgetSizeDecreaseTooltip()
-    if WG['tooltip'] then
-        WG['tooltip'].RemoveTooltip(buttonWidgetSizeDecreaseTooltipName)
-    end
-end
-
 local function deleteVSModeTooltips()
     if WG['tooltip'] then
         for _, metric in ipairs(metricsEnabled) do
@@ -1347,32 +1279,6 @@ local function createToggleVSMode()
             toggleVSModeBottom,
             toggleVSModeRight,
             toggleVSModeTop,
-            1, 1, 1, 1,
-            1, 1, 1, 1
-        )
-    end)
-end
-
-local function createButtonWidgetSizeIncrease()
-    buttonWidgetSizeIncreaseBackgroundDisplayList = gl.CreateList(function ()
-        WG.FlowUI.Draw.Element(
-            buttonWidgetSizeIncreaseDimensions["left"],
-            buttonWidgetSizeIncreaseDimensions["bottom"],
-            buttonWidgetSizeIncreaseDimensions["right"],
-            buttonWidgetSizeIncreaseDimensions["top"],
-            1, 1, 1, 1,
-            1, 1, 1, 1
-        )
-    end)
-end
-
-local function createButtonWidgetSizeDecrease()
-    buttonWidgetSizeDecreaseBackgroundDisplayList = gl.CreateList(function ()
-        WG.FlowUI.Draw.Element(
-            buttonWidgetSizeDecreaseDimensions["left"],
-            buttonWidgetSizeDecreaseDimensions["bottom"],
-            buttonWidgetSizeDecreaseDimensions["right"],
-            buttonWidgetSizeDecreaseDimensions["top"],
             1, 1, 1, 1,
             1, 1, 1, 1
         )
@@ -1420,40 +1326,6 @@ local function drawToggleVSMode()
         )
         gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
-end
-
-local function drawButtonWidgetSizeIncrease()
-    local buttonMiddleX = math.floor((buttonWidgetSizeIncreaseDimensions["right"] +
-        buttonWidgetSizeIncreaseDimensions["left"]) / 2)
-    local buttonMiddleY = math.floor((buttonWidgetSizeIncreaseDimensions["top"] +
-        buttonWidgetSizeIncreaseDimensions["bottom"]) / 2)
-    font:Begin()
-        font:SetTextColor({ 1, 1, 1, 1 })
-        font:Print(
-            "+",
-            buttonMiddleX,
-            buttonMiddleY,
-            fontSize - headerLabelPadding * 2,
-            'cvo'
-        )
-    font:End()
-end
-
-local function drawButtonWidgetSizeDecrease()
-    local buttonMiddleX = math.floor((buttonWidgetSizeDecreaseDimensions["right"] +
-        buttonWidgetSizeDecreaseDimensions["left"]) / 2)
-    local buttonMiddleY = math.floor((buttonWidgetSizeDecreaseDimensions["top"] +
-        buttonWidgetSizeDecreaseDimensions["bottom"]) / 2)
-    font:Begin()
-        font:SetTextColor({ 1, 1, 1, 1 })
-        font:Print(
-            "-",
-            buttonMiddleX,
-            buttonMiddleY,
-            fontSize - headerLabelPadding * 2,
-            'cvo'
-        )
-    font:End()
 end
 
 local function createStatsArea()
@@ -1974,14 +1846,6 @@ local function deleteToggleVSMode()
     gl.DeleteList(toggleVSModeBackgroundDisplayList)
 end
 
-local function deleteButtonWidgetSizeIncrease()
-    gl.DeleteList(buttonWidgetSizeIncreaseBackgroundDisplayList)
-end
-
-local function deleteButtonWidgetSizeDecrease()
-    gl.DeleteList(buttonWidgetSizeDecreaseBackgroundDisplayList)
-end
-
 local function deleteStatsArea()
     gl.DeleteList(statsAreaBackgroundDisplayList)
 end
@@ -2009,10 +1873,6 @@ local function init()
     updateSortingTooltip()
     createToggleVSMode()
     updateToggleVSModeTooltip()
-    createButtonWidgetSizeIncrease()
-    updateButtonWidgetSizeIncreaseTooltip()
-    createButtonWidgetSizeDecrease()
-    updateButtonWidgetSizeDecreaseTooltip()
     createStatsArea()
     createVSModeBackgroudDisplayLists()
 
@@ -2045,10 +1905,6 @@ local function deInit()
     deleteSortingTooltip()
     deleteToggleVSMode()
     deleteToggleVSModeTooltip()
-    deleteButtonWidgetSizeIncrease()
-    deleteButtonWidgetSizeIncreaseTooltip()
-    deleteButtonWidgetSizeDecrease()
-    deleteButtonWidgetSizeDecreaseTooltip()
     deleteStatsArea()
     deleteVSModeBackgroudDisplayLists()
 end
@@ -2117,6 +1973,22 @@ local function registerOptions()
             onchange = function(i, value) options.subtractReclaimFromIncome = value end,
         }
         table.insert(optionTable, optionSpecSubtractReclaim)
+        local optionWidgetSize = {
+            widgetname = "SpectatorHUD",
+            id = "widgetSize",
+            value = widgetScale,
+            name = "Widget Size",
+            description = "Scale Widget",
+            type = "slider",
+            min = 0.1,
+            max = 2,
+            step = 0.1,
+            onchange = function(i, value)
+                widgetScale = value
+                reInit()
+            end,
+        }
+        table.insert(optionTable, optionWidgetSize)
 
         WG['options'].addOptions(optionTable)
     end
@@ -2133,6 +2005,7 @@ local function teardownOptions()
 
         table.insert(optionTable, "useMetalEquivalent70")
         table.insert(optionTable, "subtractReclaimFromIncome")
+        table.insert(optionTable, "widgetSize")
 
         WG['options'].removeOptions(optionTable)
     end
@@ -2276,18 +2149,6 @@ function widget:MousePress(x, y, button)
             return
         end
     end
-
-    if isInDimensions(x, y, buttonWidgetSizeIncreaseDimensions) then
-        widgetScale = widgetScale + 0.1
-        reInit()
-        return
-    end
-
-    if isInDimensions(x, y, buttonWidgetSizeDecreaseDimensions) then
-        widgetScale = widgetScale - 0.1
-        reInit()
-        return
-    end
 end
 
 function widget:ViewResize()
@@ -2357,12 +2218,6 @@ function widget:DrawScreen()
 
         gl.CallList(toggleVSModeBackgroundDisplayList)
         drawToggleVSMode()
-
-        gl.CallList(buttonWidgetSizeIncreaseBackgroundDisplayList)
-        drawButtonWidgetSizeIncrease()
-
-        gl.CallList(buttonWidgetSizeDecreaseBackgroundDisplayList)
-        drawButtonWidgetSizeDecrease()
 
         if not vsMode then
             gl.CallList(statsAreaBackgroundDisplayList)
