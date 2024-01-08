@@ -806,12 +806,8 @@ local function sortStats()
                 currentAllyTotal = currentAllyTotal + team.value
             end
             local allyTeamCaptainID = Spring.GetTeamList(allyID)[1]
-            local teamColorRed, teamColorGreen, teamColorBlue, teamColorAlpha = Spring.GetTeamColor(allyTeamCaptainID)
             allyTotals[index] = {}
-            allyTotals[index].colorRed = teamColorRed
-            allyTotals[index].colorGreen = teamColorGreen
-            allyTotals[index].colorBlue = teamColorBlue
-            allyTotals[index].colorAlpha = teamColorAlpha
+            allyTotals[index].color = playerData[allyTeamCaptainID].color
             allyTotals[index].value = currentAllyTotal
             allyTotals[index].captainID = allyTeamCaptainID
             index = index + 1
