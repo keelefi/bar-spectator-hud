@@ -961,20 +961,21 @@ vsModeStats:
             vsModeStats[allyID].colorLine = makeDarkerColor(colorCaptain, constants.darkerLinesFactor)
             vsModeStats[allyID].colorKnobSide = makeDarkerColor(colorCaptain, constants.darkerSideKnobsFactor)
             vsModeStats[allyID].colorKnobMiddle = makeDarkerColor(colorCaptain, constants.darkerMiddleKnobFactor)
+            vsModeStats[allyID].values = {}
 
             -- build team list and assign colors
             for _,teamID in ipairs(teamList) do
                 vsModeStats[allyID][teamID] = {}
                 vsModeStats[allyID][teamID].color = { Spring.GetTeamColor(teamID) }
+                vsModeStats[allyID][teamID].values = {}
             end
 
             -- build metrics and assign placeholder values, i.e. zero
             for _,metric in ipairs(metricsEnabled) do
-                local valueAllyTeam = 0
                 for _,teamID in ipairs(teamList) do
-                    vsModeStats[allyID][teamID][metric.key] = 0
+                    vsModeStats[allyID][teamID].values[metric.id] = 0
                 end
-                vsModeStats[allyID][metric.key] = 0
+                vsModeStats[allyID].values[metric.id] = 0
             end
         end
     end
@@ -988,10 +989,10 @@ local function updateStatsVSMode()
                 local valueAllyTeam = 0
                 for _,teamID in ipairs(teamList) do
                     local valueTeam = getOneStat(metric.key, teamID)
-                    vsModeStats[allyID][teamID][metric.key] = valueTeam
+                    vsModeStats[allyID][teamID].values[metric.id] = valueTeam
                     valueAllyTeam = valueAllyTeam + valueTeam
                 end
-                vsModeStats[allyID][metric.key] = valueAllyTeam
+                vsModeStats[allyID].values[metric.id] = valueAllyTeam
             end
         end
     end
@@ -1570,8 +1571,8 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
     local statsLeft = vsModeStats[indexLeft]
     local statsRight = vsModeStats[indexRight]
 
-    local valueLeft = statsLeft[metricID]
-    local valueRight = statsRight[metricID]
+    local valueLeft = statsLeft.values[metricID]
+    local valueRight = statsRight.values[metricID]
 
     local barTop = top - vsModeBarPadding
     local barBottom = bottom + vsModeBarPadding
@@ -1621,7 +1622,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = left
         for _, teamID in ipairs(Spring.GetTeamList(indexLeft)) do
-            local teamValue = statsLeft[teamID][metricID]
+            local teamValue = statsLeft[teamID].values[metricID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
@@ -1637,7 +1638,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = right - rightBarWidth
         for _, teamID in ipairs(Spring.GetTeamList(indexRight)) do
-            local teamValue = statsRight[teamID][metricID]
+            local teamValue = statsRight[teamID].values[metricID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
@@ -1749,7 +1750,7 @@ local function drawVSModeMetrics()
             leftKnobRight,
             leftKnobTop,
             vsModeStats[indexLeft].colorKnobSide,
-            formatResources(vsModeStats[indexLeft][metric.key], true)
+            formatResources(vsModeStats[indexLeft].values[metric.id], true)
         )
 
         local rightKnobRight = vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2
@@ -1762,7 +1763,7 @@ local function drawVSModeMetrics()
             rightKnobRight,
             rightKnobTop,
             vsModeStats[indexRight].colorKnobSide,
-            formatResources(vsModeStats[indexRight][metric.key], true)
+            formatResources(vsModeStats[indexRight].values[metric.id], true)
         )
 
         drawVSBar(
@@ -1772,7 +1773,7 @@ local function drawVSModeMetrics()
             iconTop,
             indexLeft,
             indexRight,
-            metric.key
+            metric.id
         )
     end
 end
