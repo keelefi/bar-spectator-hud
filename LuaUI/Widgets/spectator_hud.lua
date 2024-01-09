@@ -59,6 +59,20 @@ where
 * Every bar has a text on top showing approximate value as textual represenation
 ]]
 
+local mathmax = math.max
+local mathfloor = math.floor
+local mathabs = math.abs
+
+local glColor = gl.Color
+local glBlending = gl.Blending
+local glRect = gl.Rect
+local glTexture = gl.Texture
+local glTexRect = gl.TexRect
+
+local spGetMouseState = Spring.GetMouseState
+
+local rectRound
+
 local haveFullView = false
 
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
@@ -597,7 +611,7 @@ end
 
 local function round(num, idp)
     local mult = 10 ^ (idp or 0)
-    return math.floor(num * mult + 0.5) / mult
+    return mathfloor(num * mult + 0.5) / mult
 end
 
 local function formatResources(amount, short)
@@ -622,7 +636,7 @@ local function formatResources(amount, short)
 
     local function addSpaces(number)
         if number >= 1000 then
-            return string.format("%s %03d", addSpaces(math.floor(number / 1000)), number % 1000)
+            return string.format("%s %03d", addSpaces(mathfloor(number / 1000)), number % 1000)
         end
         return number
     end
@@ -827,7 +841,7 @@ local function getOneStat(statKey, teamID)
         for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
             result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[1]
         end
-        result = math.max(0, result)
+        result = mathmax(0, result)
     elseif statKey == "energyConversionMetalIncome" then
         for unitID,_ in pairs(unitCache[teamID].energyConverters) do
             result = result + unitCache.energyConverters.update(unitID, 0)
@@ -842,7 +856,7 @@ local function getOneStat(statKey, teamID)
         for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
             result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[2]
         end
-        result = math.max(0, result)
+        result = mathmax(0, result)
     elseif statKey == "buildPower" then
         result = cachedTotals[teamID].buildPower
     elseif statKey == "metalProduced" then
@@ -894,7 +908,7 @@ local function getOneStat(statKey, teamID)
             -- avoid dividing by 0
             damageReceived = 1
         end
-        result = math.floor(damageDealt * 100 / damageReceived)
+        result = mathfloor(damageDealt * 100 / damageReceived)
     end
 
     return round(result)
@@ -1006,7 +1020,7 @@ end
 
 local function calculateHeaderSize()
     local headerTextHeight = font:GetTextHeight(headerLabelDefault) * fontSize
-    headerDimensions.height = math.floor(2 * borderPadding + headerTextHeight)
+    headerDimensions.height = mathfloor(2 * borderPadding + headerTextHeight)
 
     -- all buttons on the header are squares and of the same size
     -- their sides are the same length as the header height
@@ -1017,12 +1031,12 @@ local function calculateHeaderSize()
 end
 
 local function calculateStatsBarSize()
-    statsBarHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
+    statsBarHeight = mathfloor(headerDimensions.height * statBarHeightToHeaderHeight)
     statsBarWidth = widgetDimensions.width
 end
 
 local function calculateVSModeMetricSize()
-    vsModeMetricHeight = math.floor(headerDimensions.height * statBarHeightToHeaderHeight)
+    vsModeMetricHeight = mathfloor(headerDimensions.height * statBarHeightToHeaderHeight)
     vsModeMetricWidth = widgetDimensions.width
 end
 
@@ -1066,39 +1080,39 @@ end
 local function calculateWidgetSizeScaleVariables(scaleMultiplier)
     -- Lua has a limit in "upvalues" (60 in total) and therefore this is split
     -- into a separate function
-    distanceFromTopBar = math.floor(defaults.distanceFromTopBar * scaleMultiplier)
-    borderPadding = math.floor(defaults.borderPadding * scaleMultiplier)
-    headerLabelPadding = math.floor(defaults.headerLabelPadding * scaleMultiplier)
-    buttonPadding = math.floor(defaults.buttonPadding * scaleMultiplier)
-    teamDecalPadding = math.floor(defaults.teamDecalPadding * scaleMultiplier)
-    teamDecalShrink = math.floor(defaults.teamDecalShrink * scaleMultiplier)
-    vsModeMetricIconPadding = math.floor(defaults.vsModeMetricIconPadding * scaleMultiplier)
-    barOutlineWidth = math.floor(defaults.barOutlineWidth * scaleMultiplier)
-    barOutlinePadding = math.floor(defaults.barOutlinePadding * scaleMultiplier)
-    barOutlineCornerSize = math.floor(defaults.barOutlineCornerSize * scaleMultiplier)
-    teamDecalCornerSize = math.floor(defaults.teamDecalCornerSize * scaleMultiplier)
-    vsModeBarTextPadding = math.floor(defaults.vsModeBarTextPadding * scaleMultiplier)
-    vsModeDeltaPadding = math.floor(defaults.vsModeDeltaPadding * scaleMultiplier)
-    vsModeMetricKnobPadding = math.floor(defaults.vsModeMetricKnobPadding * scaleMultiplier)
-    vsModeKnobOutline = math.floor(defaults.vsModeKnobOutline * scaleMultiplier)
-    vsModeKnobCornerSize = math.floor(defaults.vsModeKnobCornerSize * scaleMultiplier)
-    vsModeBarTriangleSize = math.floor(defaults.vsModeBarTriangleSize * scaleMultiplier)
-    vsModeBarPadding = math.floor(defaults.vsModeBarPadding * scaleMultiplier)
-    vsModeLineHeight = math.floor(defaults.vsModeLineHeight * scaleMultiplier)
-    vsModeBarTooltipOffsetX = math.floor(defaults.vsModeBarTooltipOffsetX * scaleMultiplier)
-    vsModeBarTooltipOffsetY = math.floor(defaults.vsModeBarTooltipOffsetY * scaleMultiplier)
+    distanceFromTopBar = mathfloor(defaults.distanceFromTopBar * scaleMultiplier)
+    borderPadding = mathfloor(defaults.borderPadding * scaleMultiplier)
+    headerLabelPadding = mathfloor(defaults.headerLabelPadding * scaleMultiplier)
+    buttonPadding = mathfloor(defaults.buttonPadding * scaleMultiplier)
+    teamDecalPadding = mathfloor(defaults.teamDecalPadding * scaleMultiplier)
+    teamDecalShrink = mathfloor(defaults.teamDecalShrink * scaleMultiplier)
+    vsModeMetricIconPadding = mathfloor(defaults.vsModeMetricIconPadding * scaleMultiplier)
+    barOutlineWidth = mathfloor(defaults.barOutlineWidth * scaleMultiplier)
+    barOutlinePadding = mathfloor(defaults.barOutlinePadding * scaleMultiplier)
+    barOutlineCornerSize = mathfloor(defaults.barOutlineCornerSize * scaleMultiplier)
+    teamDecalCornerSize = mathfloor(defaults.teamDecalCornerSize * scaleMultiplier)
+    vsModeBarTextPadding = mathfloor(defaults.vsModeBarTextPadding * scaleMultiplier)
+    vsModeDeltaPadding = mathfloor(defaults.vsModeDeltaPadding * scaleMultiplier)
+    vsModeMetricKnobPadding = mathfloor(defaults.vsModeMetricKnobPadding * scaleMultiplier)
+    vsModeKnobOutline = mathfloor(defaults.vsModeKnobOutline * scaleMultiplier)
+    vsModeKnobCornerSize = mathfloor(defaults.vsModeKnobCornerSize * scaleMultiplier)
+    vsModeBarTriangleSize = mathfloor(defaults.vsModeBarTriangleSize * scaleMultiplier)
+    vsModeBarPadding = mathfloor(defaults.vsModeBarPadding * scaleMultiplier)
+    vsModeLineHeight = mathfloor(defaults.vsModeLineHeight * scaleMultiplier)
+    vsModeBarTooltipOffsetX = mathfloor(defaults.vsModeBarTooltipOffsetX * scaleMultiplier)
+    vsModeBarTooltipOffsetY = mathfloor(defaults.vsModeBarTooltipOffsetY * scaleMultiplier)
 end
 
 local function calculateWidgetSize()
     local scaleMultiplier = ui_scale * widgetScale * viewScreenWidth / 3840
     calculateWidgetSizeScaleVariables(scaleMultiplier)
 
-    fontSize = math.floor(defaults.fontSize * scaleMultiplier)
-    fontSizeMetric = math.floor(fontSize * 0.5)
-    fontSizeVSBar = math.floor(fontSize * 0.5)
-    fontSizeVSModeKnob = math.floor(defaults.fontSizeVSModeKnob * scaleMultiplier)
+    fontSize = mathfloor(defaults.fontSize * scaleMultiplier)
+    fontSizeMetric = mathfloor(fontSize * 0.5)
+    fontSizeVSBar = mathfloor(fontSize * 0.5)
+    fontSizeVSModeKnob = mathfloor(defaults.fontSizeVSModeKnob * scaleMultiplier)
 
-    widgetDimensions.width = math.floor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
+    widgetDimensions.width = mathfloor(viewScreenWidth * 0.20 * ui_scale * widgetScale)
 
     calculateHeaderSize()
     calculateStatsBarSize()
@@ -1116,8 +1130,8 @@ local function calculateWidgetSize()
     teamDecalHeight = statsBarHeight - borderPadding * 2 - teamDecalPadding * 2
     vsModeMetricIconHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricIconPadding * 2
     vsModeMetricIconWidth = vsModeMetricIconHeight * 2
-    vsModeBarMarkerWidth = math.floor(defaults.vsModeBarMarkerWidth * scaleMultiplier)
-    vsModeBarMarkerHeight = math.floor(defaults.vsModeBarMarkerHeight * scaleMultiplier)
+    vsModeBarMarkerWidth = mathfloor(defaults.vsModeBarMarkerWidth * scaleMultiplier)
+    vsModeBarMarkerHeight = mathfloor(defaults.vsModeBarMarkerHeight * scaleMultiplier)
     vsModeKnobHeight = vsModeMetricHeight - borderPadding * 2 - vsModeMetricKnobPadding * 2
     vsModeKnobWidth = vsModeKnobHeight * 5
 
@@ -1152,7 +1166,7 @@ end
 local function createBackgroundShader()
     if WG['guishader'] then
         backgroundShader = gl.CreateList(function ()
-            WG.FlowUI.Draw.RectRound(
+            rectRound(
                 widgetDimensions.left,
                 widgetDimensions.bottom,
                 widgetDimensions.right,
@@ -1308,45 +1322,45 @@ local function createToggleVSMode()
 end
 
 local function drawSorting()
-    gl.Color(1, 1, 1, 1)
+    glColor(1, 1, 1, 1)
     if sortingChosen == "player" then
-        gl.Texture(images["sortingPlayer"])
+        glTexture(images["sortingPlayer"])
     elseif sortingChosen == "team" then
-        gl.Texture(images["sortingTeam"])
+        glTexture(images["sortingTeam"])
     elseif sortingChosen == "teamaggregate" then
-        gl.Texture(images["sortingTeamAggregate"])
+        glTexture(images["sortingTeamAggregate"])
     end
-    gl.TexRect(
+    glTexRect(
         sortingLeft + buttonPadding,
         sortingBottom + buttonPadding,
         sortingRight - buttonPadding,
         sortingTop - buttonPadding
     )
-    gl.Texture(false)
+    glTexture(false)
 end
 
 local function drawToggleVSMode()
     -- TODO: add visual indication when toggle disabled
-    gl.Color(1, 1, 1, 1)
-    gl.Texture(images["toggleVSMode"])
-    gl.TexRect(
+    glColor(1, 1, 1, 1)
+    glTexture(images["toggleVSMode"])
+    glTexRect(
         toggleVSModeLeft + buttonPadding,
         toggleVSModeBottom + buttonPadding,
         toggleVSModeRight - buttonPadding,
         toggleVSModeTop - buttonPadding
     )
-    gl.Texture(false)
+    glTexture(false)
 
     if vsMode then
-        gl.Blending(GL.SRC_ALPHA, GL.ONE)
-        gl.Color(1, 0.2, 0.2, 0.2)
-        gl.Rect(
+        glBlending(GL.SRC_ALPHA, GL.ONE)
+        glColor(1, 0.2, 0.2, 0.2)
+        glRect(
             toggleVSModeLeft + buttonPadding,
             toggleVSModeBottom + buttonPadding,
             toggleVSModeRight - buttonPadding,
             toggleVSModeTop - buttonPadding
         )
-        gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+        glBlending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
 end
 
@@ -1389,8 +1403,8 @@ end
 local function drawAUnicolorBar(left, bottom, right, top, value, max, color, captainID)
     local captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha = Spring.GetTeamColor(captainID)
     local captainColorDarker = darkerColor(captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha, 0.7)
-    gl.Color(captainColorDarker[1], captainColorDarker[2], captainColorDarker[3], captainColorDarker[4])
-    WG.FlowUI.Draw.RectRound(
+    glColor(captainColorDarker[1], captainColorDarker[2], captainColorDarker[3], captainColorDarker[4])
+    rectRound(
         left,
         bottom,
         right,
@@ -1402,34 +1416,34 @@ local function drawAUnicolorBar(left, bottom, right, top, value, max, color, cap
 
     local leftInner = left + barOutlineWidth + barOutlinePadding
     local bottomInner = bottom + barOutlineWidth + barOutlinePadding
-    local rightInner = left + barOutlineWidth + barOutlinePadding + math.floor(value * scaleFactor)
+    local rightInner = left + barOutlineWidth + barOutlinePadding + mathfloor(value * scaleFactor)
     local topInner = top - barOutlineWidth - barOutlinePadding
 
-    gl.Color(color)
-    gl.Rect(leftInner, bottomInner, rightInner, topInner)
+    glColor(color)
+    glRect(leftInner, bottomInner, rightInner, topInner)
 
     local function addDarkGradient(left, bottom, right, top)
-        gl.Blending(GL.SRC_ALPHA, GL.ONE)
+        glBlending(GL.SRC_ALPHA, GL.ONE)
 
-        local middle = math.floor((right + left) / 2)
+        local middle = mathfloor((right + left) / 2)
 
-        gl.Color(0, 0, 0, 0.15)
+        glColor(0, 0, 0, 0.15)
         gl.Vertex(left, bottom)
         gl.Vertex(left, top)
 
-        gl.Color(0, 0, 0, 0.3)
+        glColor(0, 0, 0, 0.3)
         gl.Vertex(middle, top)
         gl.Vertex(middle, bottom)
 
-        gl.Color(0, 0, 0, 0.3)
+        glColor(0, 0, 0, 0.3)
         gl.Vertex(middle, bottom)
         gl.Vertex(middle, top)
 
-        gl.Color(0, 0, 0, 0.15)
+        glColor(0, 0, 0, 0.15)
         gl.Vertex(right, top)
         gl.Vertex(right, bottom)
 
-        gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+        glBlending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
     gl.BeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
 end
@@ -1448,7 +1462,7 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
 
     local shrink = hasCommander and 0 or teamDecalShrink
 
-    WG.FlowUI.Draw.RectRound(
+    rectRound(
         teamDecalLeft + shrink,
         teamDecalBottom + shrink,
         teamDecalRight - shrink,
@@ -1457,7 +1471,7 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
         1, 1, 1, 1,
         teamColor
     )
-    gl.Color(1, 1, 1, 1)
+    glColor(1, 1, 1, 1)
 
     local barLeft = teamDecalRight + borderPadding * 2 + teamDecalPadding
     local barRight = statsAreaRight - borderPadding - teamDecalPadding
@@ -1476,8 +1490,8 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
     )
 
     local amountText = formatResources(amount, false)
-    local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
-    local amountCenter = barBottom + math.floor((barTop - barBottom) / 2)
+    local amountMiddle = teamDecalRight + mathfloor((statsAreaRight - teamDecalRight) / 2)
+    local amountCenter = barBottom + mathfloor((barTop - barBottom) / 2)
     font:Begin()
         font:SetTextColor(textColorWhite)
         font:Print(
@@ -1535,16 +1549,16 @@ local function drawVSModeKnob(left, bottom, right, top, color, text)
     local matchingGreyRed = color[1] * greyFactor
     local matchingGreyGreen = color[2] * greyFactor
     local matchingGreyBlue = color[3] * greyFactor
-    gl.Color(matchingGreyRed, matchingGreyGreen, matchingGreyBlue, 1)
-    WG.FlowUI.Draw.RectRound(
+    glColor(matchingGreyRed, matchingGreyGreen, matchingGreyBlue, 1)
+    rectRound(
         left,
         bottom,
         right,
         top,
         vsModeKnobCornerSize
     )
-    gl.Color(color)
-    WG.FlowUI.Draw.RectRound(
+    glColor(color)
+    rectRound(
         left + vsModeKnobOutline,
         bottom + vsModeKnobOutline,
         right - vsModeKnobOutline,
@@ -1556,8 +1570,8 @@ local function drawVSModeKnob(left, bottom, right, top, color, text)
         font:SetTextColor(textColorWhite)
         font:Print(
             text,
-            math.floor((right + left) / 2),
-            math.floor((top + bottom) / 2),
+            mathfloor((right + left) / 2),
+            mathfloor((top + bottom) / 2),
             fontSizeVSModeKnob,
             'cvO'
         )
@@ -1579,9 +1593,9 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
 
     local leftBarWidth
     if valueLeft > 0 or valueRight > 0 then
-        leftBarWidth = math.floor(barLength * valueLeft / (valueLeft + valueRight))
+        leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
     else
-        leftBarWidth = math.floor(barLength / 2)
+        leftBarWidth = mathfloor(barLength / 2)
     end
     local rightBarWidth = barLength - leftBarWidth
 
@@ -1595,16 +1609,16 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         colorMiddleKnob = colorKnobMiddleGrey
     end
 
-    gl.Color(vsModeStats[indexLeft].colorBar)
-    gl.Rect(
+    glColor(vsModeStats[indexLeft].colorBar)
+    glRect(
         left,
         barBottom,
         left + leftBarWidth,
         barTop
     )
 
-    gl.Color(vsModeStats[indexRight].colorBar)
-    gl.Rect(
+    glColor(vsModeStats[indexRight].colorBar)
+    glRect(
         right - rightBarWidth,
         barBottom,
         right,
@@ -1612,10 +1626,10 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
     )
 
     -- only draw team lines if mouse on bar
-    local mouseX, mouseY = Spring.GetMouseState()
+    local mouseX, mouseY = spGetMouseState()
     if ((valueLeft > 0) or (valueRight > 0)) and (mouseX > left) and (mouseX < right) and (mouseY > bottom) and (mouseY < top) then
         local scalingFactor = barLength / (valueLeft + valueRight)
-        local lineMiddle = math.floor((top + bottom) / 2)
+        local lineMiddle = mathfloor((top + bottom) / 2)
 
         local lineStart
         local lineEnd = left
@@ -1623,9 +1637,9 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             local teamValue = statsLeft.values[teamID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
-            lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
-            gl.Color(teamColor)
-            gl.Rect(
+            lineEnd = lineEnd + mathfloor(teamValue * scalingFactor)
+            glColor(teamColor)
+            glRect(
                 lineStart,
                 barBottom,
                 lineEnd,
@@ -1639,9 +1653,9 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             local teamValue = statsRight.values[teamID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
-            lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
-            gl.Color(teamColor)
-            gl.Rect(
+            lineEnd = lineEnd + mathfloor(teamValue * scalingFactor)
+            glColor(teamColor)
+            glRect(
                 lineStart,
                 barBottom,
                 lineEnd,
@@ -1656,23 +1670,23 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             right - rightBarWidth - 1,
             top,
             colorMiddleKnob,
-            formatResources(math.abs(valueLeft - valueRight), true)
+            formatResources(mathabs(valueLeft - valueRight), true)
         )
     else
-        local lineMiddle = math.floor((top + bottom) / 2)
-        local lineBottom = lineMiddle - math.floor(vsModeLineHeight / 2)
-        local lineTop = lineMiddle + math.floor(vsModeLineHeight / 2)
+        local lineMiddle = mathfloor((top + bottom) / 2)
+        local lineBottom = lineMiddle - mathfloor(vsModeLineHeight / 2)
+        local lineTop = lineMiddle + mathfloor(vsModeLineHeight / 2)
 
-        gl.Color(vsModeStats[indexLeft].colorLine)
-        gl.Rect(
+        glColor(vsModeStats[indexLeft].colorLine)
+        glRect(
             left,
             lineBottom,
             left + leftBarWidth,
             lineTop
         )
 
-        gl.Color(vsModeStats[indexRight].colorLine)
-        gl.Rect(
+        glColor(vsModeStats[indexRight].colorLine)
+        glRect(
             right - rightBarWidth,
             lineBottom,
             right,
@@ -1684,13 +1698,13 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local relativeLeadString = nil
         if valueLeft > valueRight then
             if valueRight > 0 then
-                relativeLead = math.floor(100 * math.abs(valueLeft - valueRight) / valueRight)
+                relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
             else
                 relativeLeadString = "Inf"
             end
         elseif valueRight > valueLeft then
             if valueLeft > 0 then
-                relativeLead = math.floor(100 * math.abs(valueRight - valueLeft) / valueLeft)
+                relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
             else
                 relativeLeadString = "Inf"
             end
@@ -1726,8 +1740,8 @@ local function drawVSModeMetrics()
         local iconBottom = bottom + borderPadding + vsModeMetricIconPadding
         local iconTop = iconBottom + vsModeMetricIconHeight
 
-        local iconHCenter = math.floor((iconRight + iconLeft) / 2)
-        local iconVCenter = math.floor((iconTop + iconBottom) / 2)
+        local iconHCenter = mathfloor((iconRight + iconLeft) / 2)
+        local iconVCenter = mathfloor((iconTop + iconBottom) / 2)
         local iconText = metric.text
 
         font:Begin()
@@ -1783,23 +1797,23 @@ local function mySelector(px, py, sx, sy)
     -- modified version of WG.FlowUI.Draw.Selector
 
     local cs = (sy-py)*0.05
-	local edgeWidth = math.max(1, math.floor((sy-py) * 0.05))
+	local edgeWidth = mathmax(1, mathfloor((sy-py) * 0.05))
 
 	-- faint dark outline edge
-	WG.FlowUI.Draw.RectRound(px-edgeWidth, py-edgeWidth, sx+edgeWidth, sy+edgeWidth, cs*1.5, 1,1,1,1, { 0,0,0,0.5 })
+	rectRound(px-edgeWidth, py-edgeWidth, sx+edgeWidth, sy+edgeWidth, cs*1.5, 1,1,1,1, { 0,0,0,0.5 })
 	-- body
-	WG.FlowUI.Draw.RectRound(px, py, sx, sy, cs, 1,1,1,1, { 0.05, 0.05, 0.05, 0.8 }, { 0.15, 0.15, 0.15, 0.8 })
+	rectRound(px, py, sx, sy, cs, 1,1,1,1, { 0.05, 0.05, 0.05, 0.8 }, { 0.15, 0.15, 0.15, 0.8 })
 
 	-- highlight
-	gl.Blending(GL.SRC_ALPHA, GL.ONE)
+	glBlending(GL.SRC_ALPHA, GL.ONE)
 	-- top
-	WG.FlowUI.Draw.RectRound(px, sy-(edgeWidth*3), sx, sy, edgeWidth, 1,1,1,1, { 1,1,1,0 }, { 1,1,1,0.035 })
+	rectRound(px, sy-(edgeWidth*3), sx, sy, edgeWidth, 1,1,1,1, { 1,1,1,0 }, { 1,1,1,0.035 })
 	-- bottom
-	WG.FlowUI.Draw.RectRound(px, py, sx, py+(edgeWidth*3), edgeWidth, 1,1,1,1, { 1,1,1,0.025 }, { 1,1,1,0  })
-	gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+	rectRound(px, py, sx, py+(edgeWidth*3), edgeWidth, 1,1,1,1, { 1,1,1,0.025 }, { 1,1,1,0  })
+	glBlending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
 
 	-- button
-	WG.FlowUI.Draw.RectRound(px, py, sx, sy, cs, 1, 1, 1, 1, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.14 })
+	rectRound(px, py, sx, sy, cs, 1, 1, 1, 1, { 1, 1, 1, 0.06 }, { 1, 1, 1, 0.14 })
 	--WG.FlowUI.Draw.Button(sx-(sy-py), py, sx, sy, 1, 1, 1, 1, 1,1,1,1, nil, { 1, 1, 1, 0.1 }, nil, cs)
 end
 
@@ -1812,12 +1826,12 @@ local function drawMetricChange()
     )
 
     -- TODO: this is not working, find out why
-    local mouseX, mouseY = Spring.GetMouseState()
+    local mouseX, mouseY = spGetMouseState()
     if (mouseX > headerDimensions.left) and
             (mouseX < headerDimensions.right) and
             (mouseY > headerDimensions.bottom) and
             (mouseY < metricChangeBottom) then
-        local mouseHovered = math.floor((mouseY - metricChangeBottom) / headerDimensions.height)
+        local mouseHovered = mathfloor((mouseY - metricChangeBottom) / headerDimensions.height)
         local highlightBottom = metricChangeBottom + mouseHovered * headerDimensions.height
         local highlightTop = highlightBottom + headerDimensions.height
         WG.FlowUI.Draw.SelectHighlight(
@@ -2029,6 +2043,8 @@ local function teardownOptions()
 end
 
 function widget:Initialize()
+    rectRound = WG.FlowUI.Draw.RectRound
+
     checkAndUpdateHaveFullView()
 
     font = WG['fonts'].getFont()
@@ -2127,7 +2143,7 @@ function widget:MousePress(x, y, button)
                 (y > metricChangeBottom) and (y < headerDimensions.top) then
             -- no change if user pressed header
             if (y < headerDimensions.bottom) then
-                local metricID = getAmountOfMetrics() - math.floor((y - metricChangeBottom) / headerDimensions.height)
+                local metricID = getAmountOfMetrics() - mathfloor((y - metricChangeBottom) / headerDimensions.height)
                 local metric = getMetricFromID(metricID)
                 setMetricChosen(metric.key)
                 if vsMode then
@@ -2169,6 +2185,8 @@ function widget:MousePress(x, y, button)
 end
 
 function widget:ViewResize()
+    rectRound = WG.FlowUI.Draw.RectRound
+
     reInit()
 end
              
