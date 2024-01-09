@@ -101,6 +101,7 @@ local toggleVSModeBackgroundDisplayList
 local statsAreaBackgroundDisplayList
 local vsModeBackgroundDisplayLists = {}
 
+local textColorWhite = { 1, 1, 1, 1 }
 local font
 local fontSize
 local fontSizeMetric
@@ -930,6 +931,23 @@ local function createVSModeStats()
     -- As a nice bonus, this function reduces calls to GetTeamColor().
     -- Note that the counter-part to this function where we release memory is not
     -- needed as we are not looking to save memory.
+
+    -- Here's the layout of memory in vsModeStats, formatted in yaml
+
+--[[
+vsModeStats:
+- <allyID>:
+  - <teamID>:
+    color: team color
+    metric.id: metric.value
+  color: team captain color
+  colorBar: team captain color for bars
+  colorLine: team captain color for lines
+  colorKnobSide: team captain color for side knob
+  colorKnobMiddle: team captain color for middle knob
+  metric.id: metric.value
+]]
+
     vsModeStats = {}
 
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
@@ -937,7 +955,12 @@ local function createVSModeStats()
             vsModeStats[allyID] = {}
             local teamList = Spring.GetTeamList(allyID)
             -- use color of captain
-            vsModeStats[allyID].color = playerData[teamList[1]].color
+            local colorCaptain = playerData[teamList[1]].color
+            vsModeStats[allyID].color = colorCaptain
+            vsModeStats[allyID].colorBar = makeDarkerColor(colorCaptain, constants.darkerBarsFactor)
+            vsModeStats[allyID].colorLine = makeDarkerColor(colorCaptain, constants.darkerLinesFactor)
+            vsModeStats[allyID].colorKnobSide = makeDarkerColor(colorCaptain, constants.darkerSideKnobsFactor)
+            vsModeStats[allyID].colorKnobMiddle = makeDarkerColor(colorCaptain, constants.darkerMiddleKnobFactor)
 
             -- build team list and assign colors
             for _,teamID in ipairs(teamList) do
@@ -1152,7 +1175,7 @@ local function drawHeader()
     )
 
     font:Begin()
-    font:SetTextColor({ 1, 1, 1, 1 })
+    font:SetTextColor(textColorWhite)
     font:Print(
         headerLabel,
         headerDimensions.left + borderPadding + headerLabelPadding,
@@ -1457,7 +1480,7 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
     local amountMiddle = teamDecalRight + math.floor((statsAreaRight - teamDecalRight) / 2)
     local amountCenter = barBottom + math.floor((barTop - barBottom) / 2)
     font:Begin()
-        font:SetTextColor({ 1, 1, 1, 1 })
+        font:SetTextColor(textColorWhite)
         font:Print(
             amountText,
             amountMiddle,
@@ -1509,8 +1532,11 @@ local function drawStatsBars()
 end
 
 local function drawVSModeKnob(left, bottom, right, top, color, text)
-    local matchingGrey = makeDarkerColor(color, 0.5)
-    gl.Color(matchingGrey[1], matchingGrey[2], matchingGrey[3], 1)
+    local greyFactor = 0.5
+    local matchingGreyRed = color[1] * greyFactor
+    local matchingGreyGreen = color[2] * greyFactor
+    local matchingGreyBlue = color[3] * greyFactor
+    gl.Color(matchingGreyRed, matchingGreyGreen, matchingGreyBlue, 1)
     WG.FlowUI.Draw.RectRound(
         left,
         bottom,
@@ -1528,7 +1554,7 @@ local function drawVSModeKnob(left, bottom, right, top, color, text)
     )
 
     font:Begin()
-        font:SetTextColor({ 1, 1, 1, 1 })
+        font:SetTextColor(textColorWhite)
         font:Print(
             text,
             math.floor((right + left) / 2),
@@ -1539,7 +1565,14 @@ local function drawVSModeKnob(left, bottom, right, top, color, text)
     font:End()
 end
 
-local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorLeft, colorRight, leftTeamValues, rightTeamValues, metricTitle)
+local colorKnobMiddleGrey = { 0.5, 0.5, 0.5, 1 }
+local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metricID)
+    local statsLeft = vsModeStats[indexLeft]
+    local statsRight = vsModeStats[indexRight]
+
+    local valueLeft = statsLeft[metricID]
+    local valueRight = statsRight[metricID]
+
     local barTop = top - vsModeBarPadding
     local barBottom = bottom + vsModeBarPadding
 
@@ -1553,17 +1586,17 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
     end
     local rightBarWidth = barLength - leftBarWidth
 
-    local knobColor
+    local colorMiddleKnob
     if valueLeft > valueRight then
-        knobColor = colorLeft
+        colorMiddleKnob = statsLeft.colorKnobMiddle
     elseif valueRight > valueLeft then
-        knobColor = colorRight
+        colorMiddleKnob = statsRight.colorKnobMiddle
     else
         -- color grey if even
-        knobColor = { 0.6, 0.6, 0.6, 1 }
+        colorMiddleKnob = colorKnobMiddleGrey
     end
 
-    gl.Color(makeDarkerColor(colorLeft, constants.darkerBarsFactor))
+    gl.Color(statsLeft.colorBar)
     gl.Rect(
         left,
         barBottom,
@@ -1571,7 +1604,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
         barTop
     )
 
-    gl.Color(makeDarkerColor(colorRight, constants.darkerBarsFactor))
+    gl.Color(statsRight.colorBar)
     gl.Rect(
         right - rightBarWidth,
         barBottom,
@@ -1587,10 +1620,12 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
 
         local lineStart
         local lineEnd = left
-        for _, teamValue in ipairs(leftTeamValues) do
+        for _, teamID in ipairs(Spring.GetTeamList(indexLeft)) do
+            local teamValue = statsLeft[teamID][metricID]
+            local teamColor = playerData[teamID].color
             lineStart = lineEnd
-            lineEnd = lineEnd + math.floor(teamValue.value * scalingFactor)
-            gl.Color(teamValue.color)
+            lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
+            gl.Color(teamColor)
             gl.Rect(
                 lineStart,
                 barBottom,
@@ -1601,10 +1636,12 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
 
         local lineStart
         local lineEnd = right - rightBarWidth
-        for _, teamValue in ipairs(rightTeamValues) do
+        for _, teamID in ipairs(Spring.GetTeamList(indexRight)) do
+            local teamValue = statsRight[teamID][metricID]
+            local teamColor = playerData[teamID].color
             lineStart = lineEnd
-            lineEnd = lineEnd + math.floor(teamValue.value * scalingFactor)
-            gl.Color(teamValue.color)
+            lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
+            gl.Color(teamColor)
             gl.Rect(
                 lineStart,
                 barBottom,
@@ -1619,7 +1656,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             bottom,
             right - rightBarWidth - 1,
             top,
-            makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
+            colorMiddleKnob,
             formatResources(math.abs(valueLeft - valueRight), true)
         )
     else
@@ -1627,7 +1664,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
         local lineBottom = lineMiddle - math.floor(vsModeLineHeight / 2)
         local lineTop = lineMiddle + math.floor(vsModeLineHeight / 2)
 
-        gl.Color(makeDarkerColor(colorLeft, constants.darkerLinesFactor))
+        gl.Color(statsLeft.colorLine)
         gl.Rect(
             left,
             lineBottom,
@@ -1635,7 +1672,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             lineTop
         )
 
-        gl.Color(makeDarkerColor(colorRight, constants.darkerLinesFactor))
+        gl.Color(statsRight.colorLine)
         gl.Rect(
             right - rightBarWidth,
             lineBottom,
@@ -1669,7 +1706,7 @@ local function drawVSBar(left, bottom, right, top, valueLeft, valueRight, colorL
             bottom,
             right - rightBarWidth - 1,
             top,
-            makeDarkerColor(knobColor, constants.darkerMiddleKnobFactor),
+            colorMiddleKnob,
             relativeLeadString
         )
     end
@@ -1692,7 +1729,7 @@ local function drawVSModeMetrics()
         local iconText = metric.text
 
         font:Begin()
-            font:SetTextColor({ 1, 1, 1, 1 })
+            font:SetTextColor(textColorWhite)
             font:Print(
                 iconText,
                 iconHCenter,
@@ -1711,7 +1748,7 @@ local function drawVSModeMetrics()
             leftKnobBottom,
             leftKnobRight,
             leftKnobTop,
-            makeDarkerColor(vsModeStats[indexLeft].color, constants.darkerSideKnobsFactor),
+            vsModeStats[indexLeft].colorKnobSide,
             formatResources(vsModeStats[indexLeft][metric.key], true)
         )
 
@@ -1724,40 +1761,18 @@ local function drawVSModeMetrics()
             rightKnobBottom,
             rightKnobRight,
             rightKnobTop,
-            makeDarkerColor(vsModeStats[indexRight].color, constants.darkerSideKnobsFactor),
+            vsModeStats[indexRight].colorKnobSide,
             formatResources(vsModeStats[indexRight][metric.key], true)
         )
-
-        local leftTeamValues = {}
-        local leftTeamIDs = Spring.GetTeamList(indexLeft)
-        for i, teamID in ipairs(leftTeamIDs) do
-            leftTeamValues[i] = {
-                value = vsModeStats[indexLeft][teamID][metric.key],
-                color = vsModeStats[indexLeft][teamID].color
-            }
-        end
-
-        local rightTeamValues = {}
-        local rightTeamIDs = Spring.GetTeamList(indexRight)
-        for i, teamID in ipairs(rightTeamIDs) do
-            rightTeamValues[i] = {
-                value = vsModeStats[indexRight][teamID][metric.key],
-                color = vsModeStats[indexRight][teamID].color
-            }
-        end
 
         drawVSBar(
             leftKnobRight,
             iconBottom,
             rightKnobLeft,
             iconTop,
-            vsModeStats[indexLeft][metric.key],
-            vsModeStats[indexRight][metric.key],
-            vsModeStats[indexLeft].color,
-            vsModeStats[indexRight].color,
-            leftTeamValues,
-            rightTeamValues,
-            metric.title
+            indexLeft,
+            indexRight,
+            metric.key
         )
     end
 end
@@ -1812,7 +1827,7 @@ local function drawMetricChange()
     end
 
     font:Begin()
-        font:SetTextColor({ 1, 1, 1, 1 })
+        font:SetTextColor(textColorWhite)
         local distanceFromTop = 0
         local amountOfMetrics = getAmountOfMetrics()
         for _, currentMetric in ipairs(metricsEnabled) do
