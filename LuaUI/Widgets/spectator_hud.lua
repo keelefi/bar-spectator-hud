@@ -936,16 +936,17 @@ local function createVSModeStats()
 
 --[[
 vsModeStats:
-- <allyID>:
-  - <teamID>:
-    color: team color
-    metric.id: metric.value
+- allyID:
+  - metrics:
+    - metric.id:
+      - values:
+        teamID: team value
+      total: allyTeam value
   color: team captain color
   colorBar: team captain color for bars
   colorLine: team captain color for lines
   colorKnobSide: team captain color for side knob
   colorKnobMiddle: team captain color for middle knob
-  metric.id: metric.value
 ]]
 
     vsModeStats = {}
@@ -961,21 +962,17 @@ vsModeStats:
             vsModeStats[allyID].colorLine = makeDarkerColor(colorCaptain, constants.darkerLinesFactor)
             vsModeStats[allyID].colorKnobSide = makeDarkerColor(colorCaptain, constants.darkerSideKnobsFactor)
             vsModeStats[allyID].colorKnobMiddle = makeDarkerColor(colorCaptain, constants.darkerMiddleKnobFactor)
-            vsModeStats[allyID].values = {}
 
-            -- build team list and assign colors
-            for _,teamID in ipairs(teamList) do
-                vsModeStats[allyID][teamID] = {}
-                vsModeStats[allyID][teamID].color = { Spring.GetTeamColor(teamID) }
-                vsModeStats[allyID][teamID].values = {}
-            end
+            vsModeStats[allyID].metrics = {}
+            for _, metric in ipairs(metricsEnabled) do
+                vsModeStats[allyID].metrics[metric.id] = {}
+                vsModeStats[allyID].metrics[metric.id].values = {}
 
-            -- build metrics and assign placeholder values, i.e. zero
-            for _,metric in ipairs(metricsEnabled) do
-                for _,teamID in ipairs(teamList) do
-                    vsModeStats[allyID][teamID].values[metric.id] = 0
+                for _, teamID in ipairs(teamList) do
+                    vsModeStats[allyID].metrics[metric.id].values[teamID] = 0
                 end
-                vsModeStats[allyID].values[metric.id] = 0
+
+                vsModeStats[allyID].metrics[metric.id].total = 0
             end
         end
     end
@@ -986,13 +983,14 @@ local function updateStatsVSMode()
         if allyID ~= gaiaAllyID then
             local teamList = Spring.GetTeamList(allyID)
             for _,metric in ipairs(metricsEnabled) do
+                local statsTable = vsModeStats[allyID].metrics[metric.id]
                 local valueAllyTeam = 0
                 for _,teamID in ipairs(teamList) do
                     local valueTeam = getOneStat(metric.key, teamID)
-                    vsModeStats[allyID][teamID].values[metric.id] = valueTeam
+                    statsTable.values[teamID] = valueTeam
                     valueAllyTeam = valueAllyTeam + valueTeam
                 end
-                vsModeStats[allyID].values[metric.id] = valueAllyTeam
+                statsTable.total = valueAllyTeam
             end
         end
     end
@@ -1568,11 +1566,11 @@ end
 
 local colorKnobMiddleGrey = { 0.5, 0.5, 0.5, 1 }
 local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metricID)
-    local statsLeft = vsModeStats[indexLeft]
-    local statsRight = vsModeStats[indexRight]
+    local statsLeft = vsModeStats[indexLeft].metrics[metricID]
+    local statsRight = vsModeStats[indexRight].metrics[metricID]
 
-    local valueLeft = statsLeft.values[metricID]
-    local valueRight = statsRight.values[metricID]
+    local valueLeft = statsLeft.total
+    local valueRight = statsRight.total
 
     local barTop = top - vsModeBarPadding
     local barBottom = bottom + vsModeBarPadding
@@ -1589,15 +1587,15 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
 
     local colorMiddleKnob
     if valueLeft > valueRight then
-        colorMiddleKnob = statsLeft.colorKnobMiddle
+        colorMiddleKnob = vsModeStats[indexLeft].colorKnobMiddle
     elseif valueRight > valueLeft then
-        colorMiddleKnob = statsRight.colorKnobMiddle
+        colorMiddleKnob = vsModeStats[indexRight].colorKnobMiddle
     else
         -- color grey if even
         colorMiddleKnob = colorKnobMiddleGrey
     end
 
-    gl.Color(statsLeft.colorBar)
+    gl.Color(vsModeStats[indexLeft].colorBar)
     gl.Rect(
         left,
         barBottom,
@@ -1605,7 +1603,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         barTop
     )
 
-    gl.Color(statsRight.colorBar)
+    gl.Color(vsModeStats[indexRight].colorBar)
     gl.Rect(
         right - rightBarWidth,
         barBottom,
@@ -1622,7 +1620,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = left
         for _, teamID in ipairs(Spring.GetTeamList(indexLeft)) do
-            local teamValue = statsLeft[teamID].values[metricID]
+            local teamValue = statsLeft.values[teamID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
@@ -1638,7 +1636,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = right - rightBarWidth
         for _, teamID in ipairs(Spring.GetTeamList(indexRight)) do
-            local teamValue = statsRight[teamID].values[metricID]
+            local teamValue = statsRight.values[teamID]
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + math.floor(teamValue * scalingFactor)
@@ -1665,7 +1663,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineBottom = lineMiddle - math.floor(vsModeLineHeight / 2)
         local lineTop = lineMiddle + math.floor(vsModeLineHeight / 2)
 
-        gl.Color(statsLeft.colorLine)
+        gl.Color(vsModeStats[indexLeft].colorLine)
         gl.Rect(
             left,
             lineBottom,
@@ -1673,7 +1671,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             lineTop
         )
 
-        gl.Color(statsRight.colorLine)
+        gl.Color(vsModeStats[indexRight].colorLine)
         gl.Rect(
             right - rightBarWidth,
             lineBottom,
@@ -1717,6 +1715,9 @@ local function drawVSModeMetrics()
     local indexLeft = teamOrder and teamOrder[1] or 0
     local indexRight = teamOrder and teamOrder[2] or 1
     for _, metric in ipairs(metricsEnabled) do
+        local statsLeft = vsModeStats[indexRight].metrics[metric.id]
+        local statsRight = vsModeStats[indexLeft].metrics[metric.id]
+
         local bottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
 
@@ -1750,7 +1751,7 @@ local function drawVSModeMetrics()
             leftKnobRight,
             leftKnobTop,
             vsModeStats[indexLeft].colorKnobSide,
-            formatResources(vsModeStats[indexLeft].values[metric.id], true)
+            formatResources(statsLeft.total, true)
         )
 
         local rightKnobRight = vsModeMetricsAreaRight - borderPadding - vsModeMetricIconPadding * 2
@@ -1763,7 +1764,7 @@ local function drawVSModeMetrics()
             rightKnobRight,
             rightKnobTop,
             vsModeStats[indexRight].colorKnobSide,
-            formatResources(vsModeStats[indexRight].values[metric.id], true)
+            formatResources(statsRight.total, true)
         )
 
         drawVSBar(
