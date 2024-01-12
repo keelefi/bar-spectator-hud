@@ -1729,8 +1729,8 @@ local function drawVSModeMetrics()
     local indexLeft = teamOrder and teamOrder[1] or 0
     local indexRight = teamOrder and teamOrder[2] or 1
     for _, metric in ipairs(metricsEnabled) do
-        local statsLeft = vsModeStats[indexRight].metrics[metric.id]
-        local statsRight = vsModeStats[indexLeft].metrics[metric.id]
+        local statsLeft = vsModeStats[indexLeft].metrics[metric.id]
+        local statsRight = vsModeStats[indexRight].metrics[metric.id]
 
         local bottom = vsModeMetricsAreaTop - metric.id * vsModeMetricHeight
         local top = bottom + vsModeMetricHeight
