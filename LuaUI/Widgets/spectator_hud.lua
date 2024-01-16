@@ -64,10 +64,12 @@ local mathfloor = math.floor
 local mathabs = math.abs
 
 local glColor = gl.Color
+local glBeginEnd = gl.BeginEnd
 local glBlending = gl.Blending
 local glRect = gl.Rect
 local glTexture = gl.Texture
 local glTexRect = gl.TexRect
+local glVertex = gl.Vertex
 
 local spGetMouseState = Spring.GetMouseState
 
@@ -759,75 +761,6 @@ local function getAmountOfMetrics()
     return totalMetricsAvailable
 end
 
-local function sortStats()
-    local result = {}
-
-    if sortingChosen == "player" then
-        local temporaryTable = {}
-        for _, ally in pairs(teamStats) do
-            for _, team in pairs(ally) do
-                table.insert(temporaryTable, team)
-            end
-        end
-        table.sort(temporaryTable, function(left, right)
-            -- note: we sort in "reverse" i.e. highest value first
-            return left.value > right.value
-        end)
-        result = temporaryTable     -- TODO: remove temporaryTable and use result directly
-    elseif sortingChosen == "team" then
-        local allyTotals = {}
-        local index = 1
-        for allyID, ally in pairs(teamStats) do
-            local currentAllyTotal = 0
-            for _, team in pairs(ally) do
-                currentAllyTotal = currentAllyTotal + team.value
-            end
-            allyTotals[index] = {}
-            allyTotals[index].id = allyID
-            allyTotals[index].total = currentAllyTotal
-            index = index + 1
-        end
-        table.sort(allyTotals, function(left, right)
-            return left.total > right.total
-        end)
-        local temporaryTable = {}
-        for _, ally in pairs(allyTotals) do
-            local allyTeamTable = {}
-            for _, team in pairs(teamStats[ally.id]) do
-                table.insert(allyTeamTable, team)
-            end
-            table.sort(allyTeamTable, function(left, right)
-                return left.value > right.value
-            end)
-            for _, team in pairs(allyTeamTable) do
-                table.insert(temporaryTable, team)
-            end
-        end
-        result = temporaryTable
-    elseif sortingChosen == "teamaggregate" then
-        local allyTotals = {}
-        local index = 1
-        for allyID, ally in pairs(teamStats) do
-            local currentAllyTotal = 0
-            for _, team in pairs(ally) do
-                currentAllyTotal = currentAllyTotal + team.value
-            end
-            local allyTeamCaptainID = Spring.GetTeamList(allyID)[1]
-            allyTotals[index] = {}
-            allyTotals[index].color = playerData[allyTeamCaptainID].color
-            allyTotals[index].value = currentAllyTotal
-            allyTotals[index].captainID = allyTeamCaptainID
-            index = index + 1
-        end
-        table.sort(allyTotals, function(left, right)
-            return left.value > right.value
-        end)
-        result = allyTotals
-    end
-
-    return result
-end
-
 local function getOneStat(statKey, teamID)
     local result = 0
 
@@ -914,25 +847,119 @@ local function getOneStat(statKey, teamID)
     return round(result)
 end
 
-local function updateStatsNormalMode(statKey)
+local function createTeamStats()
+    local colorDarker = function(color)
+        local factor = 0.7
+        local alpha = 0.2
+        return {
+            color[1] * factor,
+            color[2] * factor,
+            color[3] * factor,
+            alpha
+        }
+    end
+
     teamStats = {}
+    teamStats.allyTeams = {}
+
     for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        teamStats[allyID] = {}
         if allyID ~= gaiaAllyID then
-            teamStats[allyID] = {}
+            teamStats.allyTeams[allyID] = {}
+            local allyTeam = teamStats.allyTeams[allyID]
+            allyTeam.id = allyID
             local teamList = Spring.GetTeamList(allyID)
+
+            local colorCaptain = playerData[teamList[1]].color
+            allyTeam.color = colorCaptain
+            allyTeam.colorDarker = colorDarker(colorCaptain)
+            allyTeam.name = string.format("Team %d", allyID)
+            allyTeam.allyTeam = allyTeam  -- self-reference used in displaying teamaggregate
+
+            allyTeam.teams = {}
+
             for _, teamID in ipairs(teamList) do
-                teamStats[allyID][teamID] = {}
+                allyTeam.teams[teamID] = {}
+                local team = allyTeam.teams[teamID]
+                team.id = teamID
+                team.color = playerData[teamID].color
+                team.name = playerData[teamID].name
+                team.allyTeam = allyTeam
 
-                teamStats[allyID][teamID].color = playerData[teamID].color
+                team.hasCommander = false
 
-                teamStats[allyID][teamID].name = playerData[teamID].name
-                teamStats[allyID][teamID].hasCommander = teamHasCommander(teamID)
-                teamStats[allyID][teamID].captainID = teamList[1]
+                team.value = 0
+            end
 
-                local value = getOneStat(statKey, teamID)
-                teamStats[allyID][teamID].value = value
+            allyTeam.value = 0  -- used for team sorting and aggregate mode
+        end
+    end
+
+    teamStats.data = {}
+
+    if (sortingChosen == "player") or (sortingChosen == "team") then
+        for _,allyID in ipairs(Spring.GetAllyTeamList()) do
+            if allyID ~= gaiaAllyID then
+                local teamList = Spring.GetTeamList(allyID)
+                for _,teamID in ipairs(teamList) do
+                    table.insert(teamStats.data, teamStats.allyTeams[allyID].teams[teamID])
+                end
             end
         end
+    elseif sortingChosen == "teamaggregate" then
+        for _,allyID in ipairs(Spring.GetAllyTeamList()) do
+            if allyID ~= gaiaAllyID then
+                table.insert(teamStats.data, teamStats.allyTeams[allyID])
+            end
+        end
+    end
+end
+
+local function updateStatsNormalMode(statKey)
+    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
+        if allyID ~= gaiaAllyID then
+            local teamList = Spring.GetTeamList(allyID)
+
+            local allyTeamTotal = 0
+            for _, teamID in ipairs(teamList) do
+                teamStats.allyTeams[allyID].teams[teamID].hasCommander = teamHasCommander(teamID)
+
+                local teamValue = getOneStat(statKey, teamID)
+                teamStats.allyTeams[allyID].teams[teamID].value = teamValue
+                allyTeamTotal = allyTeamTotal + teamValue
+            end
+
+            teamStats.allyTeams[allyID].value = allyTeamTotal
+        end
+    end
+
+    if sortingChosen == "player" then
+        table.sort(teamStats.data, function (left, right)
+            if left.value == right.value then
+                return left.id < right.id
+            end
+            return left.value < right.value
+        end)
+    elseif sortingChosen == "team" then
+        table.sort(teamStats.data, function (left, right)
+            if left.allyTeam ~= right.allyTeam then
+                if left.allyTeam.value == right.allyTeam.value then
+                    return left.id < right.id
+                end
+                return left.allyTeam.value < right.allyTeam.value
+            end
+            if left.value == right.value then
+                return left.id < right.id
+            end
+            return left.value < right.value
+        end)
+    elseif sortingChosen == "teamaggregate" then
+        table.sort(teamStats.data, function (left, right)
+            if left.value == right.value then
+                return left.id < right.id
+            end
+            return left.value < right.value
+        end)
     end
 end
 
@@ -1396,14 +1423,8 @@ local function createVSModeBackgroudDisplayLists()
     end
 end
 
-local function darkerColor(red, green, blue, alpha, factor)
-    return {red * factor, green * factor, blue * factor, 0.2}
-end
-
-local function drawAUnicolorBar(left, bottom, right, top, value, max, color, captainID)
-    local captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha = Spring.GetTeamColor(captainID)
-    local captainColorDarker = darkerColor(captainColorRed, captainColorGreen, captainColorBlue, captainColorAlpha, 0.7)
-    glColor(captainColorDarker[1], captainColorDarker[2], captainColorDarker[3], captainColorDarker[4])
+local function drawAUnicolorBar(left, bottom, right, top, value, max, color, bgColor)
+    glColor(bgColor)
     rectRound(
         left,
         bottom,
@@ -1428,27 +1449,27 @@ local function drawAUnicolorBar(left, bottom, right, top, value, max, color, cap
         local middle = mathfloor((right + left) / 2)
 
         glColor(0, 0, 0, 0.15)
-        gl.Vertex(left, bottom)
-        gl.Vertex(left, top)
+        glVertex(left, bottom)
+        glVertex(left, top)
 
         glColor(0, 0, 0, 0.3)
-        gl.Vertex(middle, top)
-        gl.Vertex(middle, bottom)
+        glVertex(middle, top)
+        glVertex(middle, bottom)
 
         glColor(0, 0, 0, 0.3)
-        gl.Vertex(middle, bottom)
-        gl.Vertex(middle, top)
+        glVertex(middle, bottom)
+        glVertex(middle, top)
 
         glColor(0, 0, 0, 0.15)
-        gl.Vertex(right, top)
-        gl.Vertex(right, bottom)
+        glVertex(right, top)
+        glVertex(right, bottom)
 
         glBlending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
     end
-    gl.BeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
+    glBeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
 end
 
-local function drawAStatsBar(index, teamColor, amount, max, playerName, hasCommander, captainID)
+local function drawAStatsBar(index, value, max, color, bgColor, hasCommander, playerName)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
 
@@ -1469,7 +1490,7 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
         teamDecalTop - shrink,
         teamDecalCornerSize,
         1, 1, 1, 1,
-        teamColor
+        color
     )
     glColor(1, 1, 1, 1)
 
@@ -1483,13 +1504,13 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
         barBottom,
         barRight,
         barTop,
-        amount,
+        value,
         max,
-        teamColor,
-        captainID
+        color,
+        bgColor
     )
 
-    local amountText = formatResources(amount, false)
+    local amountText = formatResources(value, false)
     local amountMiddle = teamDecalRight + mathfloor((statsAreaRight - teamDecalRight) / 2)
     local amountCenter = barBottom + mathfloor((barTop - barBottom) / 2)
     font:Begin()
@@ -1520,27 +1541,25 @@ local function drawAStatsBar(index, teamColor, amount, max, playerName, hasComma
 end
 
 local function drawStatsBars()
-    local statsSorted = sortStats(teamStats)
-
     local max = 1
-    for _, currentStat in ipairs(statsSorted) do
-        if max < currentStat.value then
-            max = currentStat.value
+    for _, currentData in ipairs(teamStats.data) do
+        if max < currentData.value then
+            max = currentData.value
         end
     end
 
-    local index = 1
-    for _, currentStat in ipairs(statsSorted) do
+    local index = #teamStats.data
+    for _, currentData in ipairs(teamStats.data) do
         drawAStatsBar(
             index,
-            currentStat.color,
-            currentStat.value,
+            currentData.value,
             max,
-            currentStat.name,
-            currentStat.hasCommander,
-            currentStat.captainID
+            currentData.color,
+            currentData.allyTeam.colorDarker,
+            currentData.hasCommander,
+            currentData.name
         )
-        index = index + 1
+        index = index - 1
     end
 end
 
@@ -1919,7 +1938,11 @@ local function init()
     buildUnitDefs()
     buildUnitCache()
 
-    createVSModeStats()
+    if not vsMode then
+        createTeamStats()
+    else
+        createVSModeStats()
+    end
     updateStats()
 end
 
