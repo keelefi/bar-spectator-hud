@@ -234,6 +234,8 @@ local metricsAvailable = {
       tooltip="Total metal produced" },
     { key="energyProduced", title="Energy Produced", text="EP", defaultValue=true,
       tooltip="Total energy produced" },
+    { key="metalExcess", title="Metal Excess", text="ME", defaultValue=false,
+      tooltip="Total metal excess" },
     { key="armyValue", title="Army Value", text="AV", defaultValue=true,
       tooltip="Army value in metal,\nincl. commander" },
     { key="defenseValue", title="Defense Value", text="DV", defaultValue=false,
@@ -803,6 +805,12 @@ local function getOneStat(statKey, teamID)
         local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
         if statsHistory and #statsHistory > 0 then
             result = statsHistory[1].energyProduced
+        end
+    elseif statKey == "metalExcess" then
+        local historyMax = Spring.GetTeamStatsHistory(teamID)
+        local statsHistory = Spring.GetTeamStatsHistory(teamID, historyMax)
+        if statsHistory and #statsHistory > 0 then
+            result = statsHistory[1].metalExcess
         end
     elseif statKey == "armyValue" then
         result = cachedTotals[teamID].armyUnits
