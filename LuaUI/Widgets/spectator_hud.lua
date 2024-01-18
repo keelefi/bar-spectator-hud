@@ -166,6 +166,8 @@ local constants = {
     darkerLinesFactor = 0.9,
     darkerSideKnobsFactor = 0.8,
     darkerMiddleKnobFactor = 0.9,
+
+    movingAverageWindowSize = 8,
 }
 
 local defaults = {
@@ -765,6 +767,34 @@ local function getAmountOfMetrics()
     return totalMetricsAvailable
 end
 
+local function initMovingAverage(movingAverage)
+    movingAverage.average = 0
+    movingAverage.index = 0
+    movingAverage.data = {}
+    for i=1,constants.movingAverageWindowSize do
+        movingAverage.data[i] = 0
+    end
+end
+
+local function updateMovingAverage(movingAverage, newValue)
+    if movingAverage.index == 0 then
+        for i=1,constants.movingAverageWindowSize do
+            movingAverage.data[i] = newValue
+        end
+        movingAverage.average = newValue
+        movingAverage.index = 1
+    end
+
+    local newIndex = movingAverage.index + 1
+    newIndex = newIndex <= constants.movingAverageWindowSize and newIndex or 1
+    movingAverage.index = newIndex
+
+    local oldValue = movingAverage.data[newIndex]
+    movingAverage.data[newIndex] = newValue
+
+    movingAverage.average = movingAverage.average + (newValue - oldValue) / constants.movingAverageWindowSize
+end
+
 local function getOneStat(statKey, teamID)
     local result = 0
 
@@ -904,6 +934,8 @@ local function createTeamStats()
 
                 team.hasCommander = false
 
+                team.movingAverage = {}
+                initMovingAverage(team.movingAverage)
                 team.value = 0
             end
 
@@ -938,11 +970,13 @@ local function updateStatsNormalMode(statKey)
 
             local allyTeamTotal = 0
             for _, teamID in ipairs(teamList) do
-                teamStats.allyTeams[allyID].teams[teamID].hasCommander = teamHasCommander(teamID)
+                local team = teamStats.allyTeams[allyID].teams[teamID]
+                team.hasCommander = teamHasCommander(teamID)
 
                 local teamValue = getOneStat(statKey, teamID)
-                teamStats.allyTeams[allyID].teams[teamID].value = teamValue
-                allyTeamTotal = allyTeamTotal + teamValue
+                updateMovingAverage(team.movingAverage, teamValue)
+                team.value = team.movingAverage.average
+                allyTeamTotal = allyTeamTotal + team.value
             end
 
             teamStats.allyTeams[allyID].value = allyTeamTotal
@@ -1026,7 +1060,8 @@ vsModeStats:
                 vsModeStats[allyID].metrics[metric.id].values = {}
 
                 for _, teamID in ipairs(teamList) do
-                    vsModeStats[allyID].metrics[metric.id].values[teamID] = 0
+                    vsModeStats[allyID].metrics[metric.id].values[teamID] = {}
+                    initMovingAverage(vsModeStats[allyID].metrics[metric.id].values[teamID])
                 end
 
                 vsModeStats[allyID].metrics[metric.id].total = 0
@@ -1044,8 +1079,8 @@ local function updateStatsVSMode()
                 local valueAllyTeam = 0
                 for _,teamID in ipairs(teamList) do
                     local valueTeam = getOneStat(metric.key, teamID)
-                    statsTable.values[teamID] = valueTeam
-                    valueAllyTeam = valueAllyTeam + valueTeam
+                    updateMovingAverage(statsTable.values[teamID], valueTeam)
+                    valueAllyTeam = valueAllyTeam + statsTable.values[teamID].average
                 end
                 statsTable.total = valueAllyTeam
             end
@@ -1669,7 +1704,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = left
         for _, teamID in ipairs(Spring.GetTeamList(indexLeft)) do
-            local teamValue = statsLeft.values[teamID]
+            local teamValue = statsLeft.values[teamID].average
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + mathfloor(teamValue * scalingFactor)
@@ -1685,7 +1720,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
         local lineStart
         local lineEnd = right - rightBarWidth
         for _, teamID in ipairs(Spring.GetTeamList(indexRight)) do
-            local teamValue = statsRight.values[teamID]
+            local teamValue = statsRight.values[teamID].average
             local teamColor = playerData[teamID].color
             lineStart = lineEnd
             lineEnd = lineEnd + mathfloor(teamValue * scalingFactor)
@@ -2188,8 +2223,8 @@ function widget:MousePress(x, y, button)
                 if vsMode then
                     vsMode = false
                     tearDownVSMode()
-                    reInit()
                 end
+                reInit()
                 updateStats()
             end
         end
