@@ -1959,6 +1959,10 @@ end
 
 local function init()
     buildMetricsEnabled()
+    local metricChosen = getMetricChosen()
+    if metricChosen then
+        headerLabel = metricChosen.title
+    end
 
     viewScreenWidth, viewScreenHeight = Spring.GetViewGeometry()
 
