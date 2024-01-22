@@ -1780,7 +1780,7 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             end
         end
         if relativeLead > relativeLeadMax then
-            relativeLeadString = string.format(">%d%%", relativeLeadMax)
+            relativeLeadString = string.format("%d+%%", relativeLeadMax)
         elseif not relativeLeadString then
             relativeLeadString = string.format("%d%%", relativeLead)
         end
