@@ -1636,13 +1636,20 @@ local function drawVSModeKnob(left, bottom, right, top, color, text)
         vsModeKnobCornerSize
     )
 
+    local knobTextAreaWidth = right - left - 2 * vsModeKnobOutline
+    local fontSizeSmaller = fontSizeVSModeKnob
+    local textWidth = font:GetTextWidth(text)
+    while textWidth * fontSizeSmaller > knobTextAreaWidth do
+        fontSizeSmaller = fontSizeSmaller - 1
+    end
+
     font:Begin()
         font:SetTextColor(textColorWhite)
         font:Print(
             text,
             mathfloor((right + left) / 2),
             mathfloor((top + bottom) / 2),
-            fontSizeVSModeKnob,
+            fontSizeSmaller,
             'cvO'
         )
     font:End()
