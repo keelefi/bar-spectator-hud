@@ -281,6 +281,7 @@ local options = {
 
     useMetalEquivalent70 = false,
     subtractReclaimFromIncome = false,
+    rainbowVSMode = false,
 }
 -- silly hack to serve first load of widget
 if not options.metrics then
@@ -1704,7 +1705,9 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
 
     -- only draw team lines if mouse on bar
     local mouseX, mouseY = spGetMouseState()
-    if ((valueLeft > 0) or (valueRight > 0)) and (mouseX > left) and (mouseX < right) and (mouseY > bottom) and (mouseY < top) then
+    if ((valueLeft > 0) or (valueRight > 0)) and
+            (options.rainbowVSMode or
+            (mouseX > left) and (mouseX < right) and (mouseY > bottom) and (mouseY < top)) then
         local scalingFactor = barLength / (valueLeft + valueRight)
         local lineMiddle = mathfloor((top + bottom) / 2)
 
@@ -2089,6 +2092,17 @@ local function registerOptions()
             onchange = function(i, value) options.subtractReclaimFromIncome = value end,
         }
         table.insert(optionTable, optionSpecSubtractReclaim)
+        local optionRainbowVSMode = {
+            widgetname = "SpectatorHUD",
+            id = "rainbowVSMode",
+            value = options.rainbowVSMode,
+            name = "Always Show Players In VS Mode",
+            description = "Show contributions of each player in VS mode",
+            type = "bool",
+            onchange = function(i, value) options.rainbowVSMode = value end,
+        }
+        table.insert(optionTable, optionRainbowVSMode)
+
         local optionWidgetSize = {
             widgetname = "SpectatorHUD",
             id = "widgetSize",
@@ -2121,6 +2135,7 @@ local function teardownOptions()
 
         table.insert(optionTable, "useMetalEquivalent70")
         table.insert(optionTable, "subtractReclaimFromIncome")
+        table.insert(optionTable, "rainbowVSMode")
         table.insert(optionTable, "widgetSize")
 
         WG['options'].removeOptions(optionTable)
@@ -2365,6 +2380,7 @@ function widget:GetConfigData()
 
         useMetalEquivalent70 = options.useMetalEquivalent70,
         subtractReclaimFromIncome = options.subtractReclaimFromIncome,
+        rainbowVSMode = options.rainbowVSMode,
     }
 
     for _,metric in ipairs(metricsAvailable) do
@@ -2401,6 +2417,9 @@ function widget:SetConfigData(data)
     end
     if data.subtractReclaimFromIncome then
         options.subtractReclaimFromIncome = data.subtractReclaimFromIncome
+    end
+    if data.rainbowVSMode then
+        options.rainbowVSMode = data.rainbowVSMode
     end
 
     options.metrics = {}
