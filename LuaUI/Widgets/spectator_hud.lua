@@ -1770,13 +1770,13 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             if valueRight > 0 then
                 relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
             else
-                relativeLeadString = "Inf"
+                relativeLeadString = "∞"
             end
         elseif valueRight > valueLeft then
             if valueLeft > 0 then
                 relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
             else
-                relativeLeadString = "Inf"
+                relativeLeadString = "∞"
             end
         end
         if relativeLead > relativeLeadMax then
