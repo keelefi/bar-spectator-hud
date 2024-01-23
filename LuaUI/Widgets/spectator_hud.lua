@@ -278,7 +278,6 @@ local options = {
     -- note: metrics table is built from metricsAvailable during configuration load
 
     useMetalEquivalent70 = false,
-    subtractReclaimFromIncome = false,
     rainbowVSMode = false,
 
     useMovingAverage = true,
@@ -813,10 +812,6 @@ local function getOneStat(statKey, teamID)
 
     if statKey == "metalIncome" then
         result = select(4, Spring.GetTeamResources(teamID, "metal")) or 0
-        if options.subtractReclaimFromIncome then
-            local metalReclaim = getOneStat("reclaimMetalIncome", teamID)
-            result = result - metalReclaim
-        end
     elseif statKey == "reclaimMetalIncome" then
         for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
             result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[1]
@@ -828,10 +823,6 @@ local function getOneStat(statKey, teamID)
         end
     elseif statKey == "energyIncome" then
         result = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
-        if options.subtractReclaimFromIncome then
-            local energyReclaim = getOneStat("reclaimEnergyIncome", teamID)
-            result = result - energyReclaim
-        end
     elseif statKey == "reclaimEnergyIncome" then
         for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
             result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[2]
@@ -2094,16 +2085,6 @@ local function registerOptions()
             end,
         }
         table.insert(optionTable, optionSpecUseME70)
-        local optionSpecSubtractReclaim = {
-            widgetname = "SpectatorHUD",
-            id = "subtractReclaimFromIncome",
-            value = options.subtractReclaimFromIncome,
-            name = "Subtract Reclaim From Income",
-            description = "Subtract reclaim from income numbers",
-            type = "bool",
-            onchange = function(i, value) options.subtractReclaimFromIncome = value end,
-        }
-        table.insert(optionTable, optionSpecSubtractReclaim)
         local optionRainbowVSMode = {
             widgetname = "SpectatorHUD",
             id = "rainbowVSMode",
@@ -2172,7 +2153,6 @@ local function teardownOptions()
         end
 
         table.insert(optionTable, "useMetalEquivalent70")
-        table.insert(optionTable, "subtractReclaimFromIncome")
         table.insert(optionTable, "rainbowVSMode")
         table.insert(optionTable, "useMovingAverage")
         table.insert(optionTable, "movingAverageWindowSize")
@@ -2419,7 +2399,6 @@ function widget:GetConfigData()
         vsMode = vsMode,
 
         useMetalEquivalent70 = options.useMetalEquivalent70,
-        subtractReclaimFromIncome = options.subtractReclaimFromIncome,
         rainbowVSMode = options.rainbowVSMode,
         useMovingAverage = options.useMovingAverage,
         movingAverageWindowSize = options.movingAverageWindowSize,
@@ -2456,9 +2435,6 @@ function widget:SetConfigData(data)
 
     if data.useMetalEquivalent70 then
         options.useMetalEquivalent70 = data.useMetalEquivalent70
-    end
-    if data.subtractReclaimFromIncome then
-        options.subtractReclaimFromIncome = data.subtractReclaimFromIncome
     end
     if data.rainbowVSMode then
         options.rainbowVSMode = data.rainbowVSMode
