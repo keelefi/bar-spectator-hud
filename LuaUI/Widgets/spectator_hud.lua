@@ -215,7 +215,7 @@ local toggleVSModeTooltipText = "Toggle Versus Mode on/off"
 local gaiaID = Spring.GetGaiaTeamID()
 local gaiaAllyID = select(6, Spring.GetTeamInfo(gaiaID, false))
 
-local statsUpdateFrequency = 5        -- every 5 frames
+local statsUpdateFrequency = 2        -- every 2nd frame
 
 local headerTooltipName = "spectator_hud_header"
 local headerTooltipTitle = "Select Metric"
