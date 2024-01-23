@@ -282,6 +282,8 @@ local options = {
 
     useMovingAverage = true,
     movingAverageWindowSize = 15,
+
+    showDebugInfo = false,
 }
 
 -- silly hack to serve first load of widget
@@ -382,7 +384,9 @@ local function addToUnitCache(teamID, unitID, unitDefID)
                 end
                 unitCache[teamID][cache][unitID] = value
             else
-                Spring.Echo(string.format("WARNING: addToUnitCache(), unitID %d already added", unitID))
+                if options.showDebugInfo then
+                    Spring.Echo(string.format("WARNING: addToUnitCache(), unitID %d already added", unitID))
+                end
             end
         end
     end
@@ -430,7 +434,9 @@ local function removeFromUnitCache(teamID, unitID, unitDefID)
                 end
                 unitCache[teamID][cache][unitID] = nil
             else
-                Spring.Echo(string.format("WARNING: removeFromUnitCache(), unitID %d not in unit cache", unitID))
+                if options.showDebugInfo then
+                    Spring.Echo(string.format("WARNING: removeFromUnitCache(), unitID %d not in unit cache", unitID))
+                end
             end
         end
     end
@@ -2122,6 +2128,17 @@ local function registerOptions()
         }
         table.insert(optionTable, optionMovingAverageWindowSize)
 
+        local optionShowDebugInfo = {
+            widgetname = "SpectatorHUD",
+            id = "showDebugInfo",
+            value = options.showDebugInfo,
+            name = "Show Debug Info",
+            description = "Print information into console that is relevant to widget developers.",
+            type = "bool",
+            onchange = function(i, value) options.showDebugInfo = value end,
+        }
+        table.insert(optionTable, optionShowDebugInfo)
+
         local optionWidgetSize = {
             widgetname = "SpectatorHUD",
             id = "widgetSize",
@@ -2156,6 +2173,7 @@ local function teardownOptions()
         table.insert(optionTable, "rainbowVSMode")
         table.insert(optionTable, "useMovingAverage")
         table.insert(optionTable, "movingAverageWindowSize")
+        table.insert(optionTable, "showDebugInfo")
         table.insert(optionTable, "widgetSize")
 
         WG['options'].removeOptions(optionTable)
@@ -2402,6 +2420,7 @@ function widget:GetConfigData()
         rainbowVSMode = options.rainbowVSMode,
         useMovingAverage = options.useMovingAverage,
         movingAverageWindowSize = options.movingAverageWindowSize,
+        showDebugInfo = options.showDebugInfo,
     }
 
     for _,metric in ipairs(metricsAvailable) do
@@ -2444,6 +2463,9 @@ function widget:SetConfigData(data)
     end
     if data.movingAverageWindowSize then
         options.movingAverageWindowSize = data.movingAverageWindowSize
+    end
+    if data.showDebugInfo then
+        options.showDebugInfo = data.showDebugInfo
     end
 
     options.metrics = {}
