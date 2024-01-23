@@ -282,6 +282,7 @@ local options = {
     useMetalEquivalent70 = false,
     subtractReclaimFromIncome = false,
     rainbowVSMode = false,
+    useMovingAverage = true,
 }
 -- silly hack to serve first load of widget
 if not options.metrics then
@@ -769,6 +770,11 @@ local function getAmountOfMetrics()
 end
 
 local function initMovingAverage(movingAverage)
+    if not options.useMovingAverage then
+        movingAverage.average = 0
+        return
+    end
+
     movingAverage.average = 0
     movingAverage.index = 0
     movingAverage.data = {}
@@ -778,6 +784,11 @@ local function initMovingAverage(movingAverage)
 end
 
 local function updateMovingAverage(movingAverage, newValue)
+    if not options.useMovingAverage then
+        movingAverage.average = newValue
+        return
+    end
+
     if movingAverage.index == 0 then
         for i=1,constants.movingAverageWindowSize do
             movingAverage.data[i] = newValue
@@ -2102,6 +2113,16 @@ local function registerOptions()
             onchange = function(i, value) options.rainbowVSMode = value end,
         }
         table.insert(optionTable, optionRainbowVSMode)
+        local optionUseMovingAverage = {
+            widgetname = "SpectatorHUD",
+            id = "useMovingAverage",
+            value = options.useMovingAverage,
+            name = "Show Smoothen Values",
+            description = "Smoothen out shown values by averaging over a short period of time",
+            type = "bool",
+            onchange = function(i, value) options.useMovingAverage = value end,
+        }
+        table.insert(optionTable, optionUseMovingAverage)
 
         local optionWidgetSize = {
             widgetname = "SpectatorHUD",
@@ -2136,6 +2157,7 @@ local function teardownOptions()
         table.insert(optionTable, "useMetalEquivalent70")
         table.insert(optionTable, "subtractReclaimFromIncome")
         table.insert(optionTable, "rainbowVSMode")
+        table.insert(optionTable, "useMovingAverage")
         table.insert(optionTable, "widgetSize")
 
         WG['options'].removeOptions(optionTable)
@@ -2381,6 +2403,7 @@ function widget:GetConfigData()
         useMetalEquivalent70 = options.useMetalEquivalent70,
         subtractReclaimFromIncome = options.subtractReclaimFromIncome,
         rainbowVSMode = options.rainbowVSMode,
+        useMovingAverage = options.useMovingAverage,
     }
 
     for _,metric in ipairs(metricsAvailable) do
@@ -2420,6 +2443,9 @@ function widget:SetConfigData(data)
     end
     if data.rainbowVSMode then
         options.rainbowVSMode = data.rainbowVSMode
+    end
+    if data.useMovingAverage then
+        options.useMovingAverage = data.useMovingAverage
     end
 
     options.metrics = {}
