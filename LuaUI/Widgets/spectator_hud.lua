@@ -166,8 +166,6 @@ local constants = {
     darkerLinesFactor = 0.9,
     darkerSideKnobsFactor = 0.8,
     darkerMiddleKnobFactor = 0.9,
-
-    movingAverageWindowSize = 8,
 }
 
 local defaults = {
@@ -282,8 +280,11 @@ local options = {
     useMetalEquivalent70 = false,
     subtractReclaimFromIncome = false,
     rainbowVSMode = false,
+
     useMovingAverage = true,
+    movingAverageWindowSize = 15,
 }
+
 -- silly hack to serve first load of widget
 if not options.metrics then
     options.metrics = {}
@@ -778,7 +779,7 @@ local function initMovingAverage(movingAverage)
     movingAverage.average = 0
     movingAverage.index = 0
     movingAverage.data = {}
-    for i=1,constants.movingAverageWindowSize do
+    for i=1,options.movingAverageWindowSize do
         movingAverage.data[i] = 0
     end
 end
@@ -790,7 +791,7 @@ local function updateMovingAverage(movingAverage, newValue)
     end
 
     if movingAverage.index == 0 then
-        for i=1,constants.movingAverageWindowSize do
+        for i=1,options.movingAverageWindowSize do
             movingAverage.data[i] = newValue
         end
         movingAverage.average = newValue
@@ -798,13 +799,13 @@ local function updateMovingAverage(movingAverage, newValue)
     end
 
     local newIndex = movingAverage.index + 1
-    newIndex = newIndex <= constants.movingAverageWindowSize and newIndex or 1
+    newIndex = newIndex <= options.movingAverageWindowSize and newIndex or 1
     movingAverage.index = newIndex
 
     local oldValue = movingAverage.data[newIndex]
     movingAverage.data[newIndex] = newValue
 
-    movingAverage.average = movingAverage.average + (newValue - oldValue) / constants.movingAverageWindowSize
+    movingAverage.average = movingAverage.average + (newValue - oldValue) / options.movingAverageWindowSize
 end
 
 local function getOneStat(statKey, teamID)
@@ -2123,6 +2124,22 @@ local function registerOptions()
             onchange = function(i, value) options.useMovingAverage = value end,
         }
         table.insert(optionTable, optionUseMovingAverage)
+        local optionMovingAverageWindowSize = {
+            widgetname = "SpectatorHUD",
+            id = "movingAverageWindowSize",
+            value = options.movingAverageWindowSize,
+            name = "Smoothen Amount",
+            description = "Amount of smoothing applied, higher is more (15 = 1 second).",
+            type = "slider",
+            min = 5,
+            max = 60,
+            step = 5,
+            onchange = function(i, value)
+                options.movingAverageWindowSize = value
+                reInit()
+            end,
+        }
+        table.insert(optionTable, optionMovingAverageWindowSize)
 
         local optionWidgetSize = {
             widgetname = "SpectatorHUD",
@@ -2158,6 +2175,7 @@ local function teardownOptions()
         table.insert(optionTable, "subtractReclaimFromIncome")
         table.insert(optionTable, "rainbowVSMode")
         table.insert(optionTable, "useMovingAverage")
+        table.insert(optionTable, "movingAverageWindowSize")
         table.insert(optionTable, "widgetSize")
 
         WG['options'].removeOptions(optionTable)
@@ -2404,6 +2422,7 @@ function widget:GetConfigData()
         subtractReclaimFromIncome = options.subtractReclaimFromIncome,
         rainbowVSMode = options.rainbowVSMode,
         useMovingAverage = options.useMovingAverage,
+        movingAverageWindowSize = options.movingAverageWindowSize,
     }
 
     for _,metric in ipairs(metricsAvailable) do
@@ -2446,6 +2465,9 @@ function widget:SetConfigData(data)
     end
     if data.useMovingAverage then
         options.useMovingAverage = data.useMovingAverage
+    end
+    if data.movingAverageWindowSize then
+        options.movingAverageWindowSize = data.movingAverageWindowSize
     end
 
     options.metrics = {}
