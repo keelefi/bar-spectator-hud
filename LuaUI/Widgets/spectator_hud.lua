@@ -6,6 +6,7 @@ function widget:GetInfo()
         date = "2023",
         license = "GNU GPL v3 (or later)",
         layer = 1,
+        handler = true,
         enabled = true
     }
 end
@@ -2181,6 +2182,10 @@ local function teardownOptions()
 end
 
 function widget:Initialize()
+    if widgetHandler:IsWidgetKnown("Ecostats") then
+        widgetHandler:DisableWidget("Ecostats")
+    end
+
     rectRound = WG.FlowUI.Draw.RectRound
 
     checkAndUpdateHaveFullView()
