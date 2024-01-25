@@ -812,6 +812,10 @@ local function updateMovingAverage(movingAverage, newValue)
     movingAverage.data[newIndex] = newValue
 
     movingAverage.average = movingAverage.average + (newValue - oldValue) / options.movingAverageWindowSize
+
+    if movingAverage.average < 1 then
+        movingAverage.average = 0
+    end
 end
 
 local function getOneStat(statKey, teamID)
