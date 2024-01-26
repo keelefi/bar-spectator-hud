@@ -1817,6 +1817,58 @@ local function drawVSBar(left, bottom, right, top, indexLeft, indexRight, metric
             relativeLeadString
         )
     end
+
+    if WG['tooltip'] and ((mouseX > left) and (mouseX < right) and (mouseY > bottom) and (mouseY < top)) then
+        local leftTeamValues = {}
+        for _, teamID in ipairs(Spring.GetTeamList(indexLeft)) do
+            table.insert(leftTeamValues, {
+                value=statsLeft.values[teamID].average,
+                name=playerData[teamID].name
+            })
+        end
+        table.sort(leftTeamValues, function(left, right) return left.value > right.value end)
+
+        local rightTeamValues = {}
+        for _, teamID in ipairs(Spring.GetTeamList(indexRight)) do
+            table.insert(rightTeamValues, {
+                value=statsRight.values[teamID].average,
+                name=playerData[teamID].name
+            })
+        end
+        table.sort(rightTeamValues, function(left, right) return left.value > right.value end)
+
+        local leftTeamValuesStringTable = {}
+        for _,value in ipairs(leftTeamValues) do
+            table.insert(leftTeamValuesStringTable, string.format("  %s: %s\n",
+                value.name,
+                formatResources(value.value, true)))
+        end
+        local rightTeamValuesStringTable = {}
+        for _,value in ipairs(rightTeamValues) do
+            table.insert(rightTeamValuesStringTable, string.format("  %s: %s\n",
+                value.name,
+                formatResources(value.value, true)))
+        end
+
+        local tooltipString = string.format("Team %d: %s\n", indexLeft, formatResources(valueLeft, true)) ..
+            table.concat(leftTeamValuesStringTable) ..
+            string.format("Team %d: %s\n", indexRight, formatResources(valueRight, true)) ..
+            table.concat(rightTeamValuesStringTable)
+
+        -- remove last \n
+        tooltipString = tooltipString:sub(1, -2)
+
+        local metric = getMetricFromID(metricID)
+        local metricTitle = metric.title
+
+        WG['tooltip'].ShowTooltip(
+            "spectator_hud_vsmode_mouseover_tooltip",
+            tooltipString,
+            mouseX + vsModeBarTooltipOffsetX,
+            mouseY + vsModeBarTooltipOffsetY,
+            metricTitle
+        )
+    end
 end
 
 local function drawVSModeMetrics()
