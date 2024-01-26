@@ -282,7 +282,7 @@ local options = {
     rainbowVSMode = false,
 
     useMovingAverage = true,
-    movingAverageWindowSize = 15,
+    movingAverageWindowSize = 16,
 
     showDebugInfo = false,
 }
@@ -2121,11 +2121,11 @@ local function registerOptions()
             id = "movingAverageWindowSize",
             value = options.movingAverageWindowSize,
             name = "Smoothen Amount",
-            description = "Amount of smoothing applied, higher is more (15 = 1 second).",
+            description = "Amount of smoothing applied, higher is more (16 = approx. 1 second).",
             type = "slider",
-            min = 5,
-            max = 60,
-            step = 5,
+            min = 4,
+            max = 32,
+            step = 4,
             onchange = function(i, value)
                 options.movingAverageWindowSize = value
                 reInit()
