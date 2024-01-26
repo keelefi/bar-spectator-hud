@@ -813,7 +813,7 @@ local function updateMovingAverage(movingAverage, newValue)
 
     movingAverage.average = movingAverage.average + (newValue - oldValue) / options.movingAverageWindowSize
 
-    if movingAverage.average < 1 then
+    if (movingAverage.average * options.movingAverageWindowSize) < 0.5 then
         movingAverage.average = 0
     end
 end
