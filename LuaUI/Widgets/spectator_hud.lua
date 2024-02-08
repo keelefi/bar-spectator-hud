@@ -163,10 +163,12 @@ local vsModeBarTooltipOffsetY
 -- note: the different between defaults and constants is that defaults are adjusted according to
 -- screen size, widget size and ui scale. On the other hand, constants do not change.
 local constants = {
-    darkerBarsFactor = 0.6,
-    darkerLinesFactor = 0.9,
-    darkerSideKnobsFactor = 0.8,
-    darkerMiddleKnobFactor = 0.9,
+    darkerBarsFactor = 0.4,
+    darkerLinesFactor = 0.7,
+    darkerSideKnobsFactor = 0.5,
+    darkerMiddleKnobFactor = 0.7,
+
+    darkerDecal = 0.8,
 }
 
 local defaults = {
@@ -944,6 +946,7 @@ local function createTeamStats()
                 local team = allyTeam.teams[teamID]
                 team.id = teamID
                 team.color = playerData[teamID].color
+                team.colorDecal = makeDarkerColor(playerData[teamID].color, constants.darkerDecal)
                 team.name = playerData[teamID].name
                 team.allyTeam = allyTeam
 
@@ -1535,7 +1538,7 @@ local function drawAUnicolorBar(left, bottom, right, top, value, max, color, bgC
     glBeginEnd(GL.QUADS, addDarkGradient, leftInner, bottomInner, rightInner, topInner)
 end
 
-local function drawAStatsBar(index, value, max, color, bgColor, hasCommander, playerName)
+local function drawAStatsBar(index, value, max, color, colorDecal, bgColor, hasCommander, playerName)
     local statBarBottom = statsAreaTop - index * statsBarHeight
     local statBarTop = statBarBottom + statsBarHeight
 
@@ -1556,7 +1559,7 @@ local function drawAStatsBar(index, value, max, color, bgColor, hasCommander, pl
         teamDecalTop - shrink,
         teamDecalCornerSize,
         1, 1, 1, 1,
-        color
+        colorDecal
     )
     glColor(1, 1, 1, 1)
 
@@ -1621,6 +1624,7 @@ local function drawStatsBars()
             currentData.value,
             max,
             currentData.color,
+            currentData.colorDecal,
             currentData.allyTeam.colorDarker,
             currentData.hasCommander,
             currentData.name
