@@ -803,24 +803,6 @@ local function getAmountOfMetricsEnabled()
     return totalMetricsAvailable
 end
 
--- TODO: remove this function
-local function calculateWidgetSizeScaleVariables(scaleMultiplier)
-    -- Lua has a limit in "upvalues" (60 in total) and therefore this is split
-    -- into a separate function
-    metricTextPadding = mathfloor(defaults.metricTextPadding * scaleMultiplier)
-    barOutlineWidth = mathfloor(defaults.barOutlineWidth * scaleMultiplier)
-    barOutlinePadding = mathfloor(defaults.barOutlinePadding * scaleMultiplier)
-    barOutlineCornerSize = mathfloor(defaults.barOutlineCornerSize * scaleMultiplier)
-    teamDecalCornerSize = mathfloor(defaults.teamDecalCornerSize * scaleMultiplier)
-    metricMetricKnobPadding = mathfloor(defaults.metricMetricKnobPadding * scaleMultiplier)
-    metricKnobOutline = mathfloor(defaults.metricKnobOutline * scaleMultiplier)
-    metricKnobCornerSize = mathfloor(defaults.metricKnobCornerSize * scaleMultiplier)
-    metricBarPadding = mathfloor(defaults.metricBarPadding * scaleMultiplier)
-    metricLineHeight = mathfloor(defaults.metricLineHeight * scaleMultiplier)
-    metricBarTooltipOffsetX = mathfloor(defaults.metricBarTooltipOffsetX * scaleMultiplier)
-    metricBarTooltipOffsetY = mathfloor(defaults.metricBarTooltipOffsetY * scaleMultiplier)
-end
-
 local function scaleWidgetSize()
     -- what we need:
     --  - metric bar dimensions
@@ -831,7 +813,6 @@ local function scaleWidgetSize()
     --      - TODO: fontSize for custom tooltip
 
     local scaleMultiplier = ui_scale * config.widgetScale * viewScreenWidth / 3840
-    --calculateWidgetSizeScaleVariables(scaleMultiplier)
 
     metricDimensions.height = mathfloor(defaults.metricHeight * scaleMultiplier)
     widgetDimensions.height = metricDimensions.height * getAmountOfMetricsEnabled()
@@ -1401,173 +1382,6 @@ local function deleteMetricDisplayLists()
     end
 end
 
---[[
-local function createKnobVAO()
-    -- TODO: find Lua matrix multiplication function
-    local function scaleRectangle(vector, matrix)
-        local result = {
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-        }
-
-        local index = 1
-        for _,scalar in ipairs(vector) do
-            result[index] = scalar * matrix[index]
-            result[index+4] = scalar * matrix[index+4]
-            result[index+8] = scalar * matrix[index+8]
-            result[index+12] = scalar * matrix[index+12]
-            index = index + 1
-        end
-
-        return result
-    end
-
-    -- TODO: do we need separate VAOs for each knob as they can have different colors?
-    -- note: the middle knobs change color dynamically during progress of the game
-    -- the side knobs have static color
-
-    if knobVAO then
-        knobVAO:Delete()
-    end
-    knobVAO = gl.GetVAO()
-
-    local vertexVBO = gl.GetVBO(GL.ARRAY_BUFFER, false) 
-    vertexVBO:Define(4*4, {
-        { id = 0, name = "pos", size = 4, },
-    })
-    -- rectangle vertices:
-    --  - x=0.0, y=0.0, z=0.0, ?=0.0,
-    --  - x=1.0, y=0.0, z=0.0, ?=0.0,
-    --  - x=0.0, y=1.0, z=0.0, ?=0.0,
-    --  - x=1.0, y=1.0, z=0.0, ?=0.0,
-    --vertexData = {
-    --    0.0, 0.0, 0.0, 0.0,   -- top left
-    --    1.0, 0.0, 0.0, 0.0,    -- top right
-    --    0.0, 1.0, 0.0, 0.0,    -- bottom left
-    --    1.0, 1.0, 0.0, 0.0,     -- bottom right
-    --}
-    -- TODO: refactor this using matrix algebra
-    rectangleMatrix = {
-        0.0, 0.0, 0.0, 0.0,     -- top left
-        1.0, 0.0, 0.0, 0.0,     -- top right
-        0.0, 1.0, 0.0, 0.0,     -- bottom left
-        1.0, 1.0, 0.0, 0.0,     -- bottom right
-    }
-    local sizeVector = {
-        metricDimensions.knobWidth * 2 / viewScreenWidth,
-        metricDimensions.knobHeight * 2 / viewScreenHeight,
-        0.0,
-        0.0,
-    }
-    local vertexData = scaleRectangle(sizeVector, rectangleMatrix)
-    vertexVBO:Upload(vertexData)
-
-    for _,vertex in ipairs(vertexData) do
-        Spring.Echo(vertex)
-    end
-
-    local indexVBO = gl.GetVBO(GL.ELEMENT_ARRAY_BUFFER, false)
-    indexVBO:Define(6 * #metricsEnabled * 2, GL.UNSIGNED_INT)
-    --local indexData = { 0, 1, 2, 1, 2, 3 }
-    local indexData = {}
-    for metricIndex,metric in ipairs(metricsEnabled) do
-        local baseIndex = (metricIndex-1)*6*2
-
-        indexData[baseIndex+1] = 0
-        indexData[baseIndex+2] = 1
-        indexData[baseIndex+3] = 2
-
-        indexData[baseIndex+4] = 1
-        indexData[baseIndex+5] = 2
-        indexData[baseIndex+6] = 3
-
-        indexData[baseIndex+7] = 0
-        indexData[baseIndex+8] = 1
-        indexData[baseIndex+9] = 2
-
-        indexData[baseIndex+10] = 1
-        indexData[baseIndex+11] = 2
-        indexData[baseIndex+12] = 3
-    end
-    indexVBO:Upload(indexData)
-
-    -- instance data is the offset of each knob
-    local instanceVBO = gl.GetVBO(GL.ARRAY_BUFFER, true)
-    -- TODO: add middle knob to instanceCount
-    local instanceCount = #metricsEnabled * 2 -- double the amount of metrics because each metric has two knobs
-    instanceVBO:Define(instanceCount, {
-        {id = 1, name = "posBias", size = 4},
-        {id = 2, name = "aKnobColor", size = 4},
-    })
-    local instanceData = {}
-    local leftKnobsLeft = widgetDimensions.left + borderPadding + 2*metricDimensions.textPadding + metricDimensions.textWidth
-    Spring.Echo("widgetDimensions.left: " .. tostring(widgetDimensions.left))
-    Spring.Echo("leftKnobsLeft: " .. tostring(leftKnobsLeft))
-    local rightKnobsLeft = widgetDimensions.right - borderPadding - metricDimensions.knobWidth
-    for metricIndex,metric in ipairs(metricsEnabled) do
-        -- for each metric, we have 3 knobs: one on the left, one in the middle and one on the right
-        local knobBottom = widgetDimensions.top - metricIndex * metricDimensions.height
-        Spring.Echo("widgetDimensions.top: " .. tostring(widgetDimensions.top))
-        Spring.Echo("metricDimensions.height: " .. tostring(metricDimensions.height))
-        Spring.Echo("metricIndex: " .. tostring(metricIndex))
-        Spring.Echo("knobBottom: " .. tostring(knobBottom))
-        --local knobTop = knobBottom + metricDimensions.height
-
-        local leftKnobLeft = leftKnobsLeft
-        --local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-
-        -- TODO: ignore middle knobs for now
-        --local middleKnobLeft = 
-        --local middleKnobRight = middleKnobLeft + metricDimensions.knobWidth
-
-        local rightKnobLeft = rightKnobsLeft
-        --local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-
-        local baseIndex = (metricIndex-1)*16
-
-        -- add left knob relative position data
-        instanceData[baseIndex+1] = leftKnobLeft * 2 / viewScreenWidth - 1.0
-        instanceData[baseIndex+2] = 0
-        instanceData[baseIndex+3] = knobBottom * 2 / viewScreenHeight - 1.0
-        instanceData[baseIndex+4] = 0
-
-        -- add color of left knob
-        instanceData[baseIndex+5] = allyTeamTable[1].colorKnobSide[1]
-        instanceData[baseIndex+6] = allyTeamTable[1].colorKnobSide[2]
-        instanceData[baseIndex+7] = allyTeamTable[1].colorKnobSide[3]
-        instanceData[baseIndex+8] = allyTeamTable[1].colorKnobSide[4]
-
-        -- TODO: add middle knob relative position data
-
-        -- TODO: add middle knob color
-
-        -- add right knob relative position data
-        instanceData[baseIndex+9] = rightKnobLeft * 2 / viewScreenWidth - 1.0
-        instanceData[baseIndex+10] = 0
-        instanceData[baseIndex+11] = knobBottom * 2 / viewScreenHeight - 1.0
-        instanceData[baseIndex+12] = 0
-
-        -- add color of right knob
-        instanceData[baseIndex+13] = allyTeamTable[2].colorKnobSide[1]
-        instanceData[baseIndex+14] = allyTeamTable[2].colorKnobSide[2]
-        instanceData[baseIndex+15] = allyTeamTable[2].colorKnobSide[3]
-        instanceData[baseIndex+16] = allyTeamTable[2].colorKnobSide[4]
-
-    end
-    instanceVBO:Upload(instanceData)
-
-    for _,instacebit in ipairs(instanceData) do
-        Spring.Echo(instacebit)
-    end
-
-    knobVAO:AttachVertexBuffer(vertexVBO)
-    knobVAO:AttachInstanceBuffer(instanceVBO)
-    knobVAO:AttachIndexBuffer(indexVBO)
-end
-]]
-
 local function createKnobVertices(vertexMatrix, startIndex, left, bottom, right, top, cornerRadius, cornerTriangleAmount)
     local function addCornerVertices(vertexMatrix, startIndex, startAngle, originX, originY, cornerRadiusX, cornerRadiusY)
         -- first, add the corner vertex
@@ -1853,7 +1667,6 @@ local function createKnobVAO()
     local indexData = {}
     local vertexOffset = 0
     vertexOffset = insertKnobIndices(indexData, vertexOffset, cornerTriangleAmount)
-    --vertexOffset = insertKnobIndices(indexData, vertexOffset, cornerTriangleAmount)
     indexVBOInner:Define(#indexData, GL.UNSIGNED_INT)
     indexVBOInner:Upload(indexData)
     indexVBOOutline:Define(#indexData, GL.UNSIGNED_INT)
@@ -1982,130 +1795,38 @@ local function addMiddleKnobs()
     end
 end
 
+local modifyKnobInstanceData = {0, 0, 0, 0, 0, 0, 0, 0}
 local function modifyKnob(knobVAO, instance, left, bottom, color)
     -- TODO: test if this function works
-    local instanceData = {}
+    -- note: instead of using a local variable instanceData that rebuild a table every time this function is called,
+    -- we use the global variable modifyKnobInstanceData to avoid recreating a table and instead reusing the table.
+    --local instanceData = {}
 
     -- posBias
-    table.insert(instanceData, coordinateScreenXToOpenGL(left)+1.0)
-    table.insert(instanceData, coordinateScreenYToOpenGL(bottom)+1.0)
-    table.insert(instanceData, 0.0)
-    table.insert(instanceData, 0.0)
+    modifyKnobInstanceData[1] = coordinateScreenXToOpenGL(left) + 1.0
+    modifyKnobInstanceData[2] = coordinateScreenYToOpenGL(bottom) + 1.0
+    modifyKnobInstanceData[3] = 0.0
+    modifyKnobInstanceData[4] = 0.0
 
     -- aKnobColor
-    instanceData[5] = color[1]
-    instanceData[6] = color[2]
-    instanceData[7] = color[3]
-    instanceData[8] = color[4]
-    knobVAO.instanceVBOInner:Upload(instanceData, -1, instance-1)
+    modifyKnobInstanceData[5] = color[1]
+    modifyKnobInstanceData[6] = color[2]
+    modifyKnobInstanceData[7] = color[3]
+    modifyKnobInstanceData[8] = color[4]
+    knobVAO.instanceVBOInner:Upload(modifyKnobInstanceData, -1, instance-1)
 
     local greyFactor = 0.5
-    instanceData[5] = color[1] * greyFactor
-    instanceData[6] = color[2] * greyFactor
-    instanceData[7] = color[3] * greyFactor
-    instanceData[8] = color[4] * greyFactor
-    knobVAO.instanceVBOOutline:Upload(instanceData, -1, instance-1)
+    modifyKnobInstanceData[5] = color[1] * greyFactor
+    modifyKnobInstanceData[6] = color[2] * greyFactor
+    modifyKnobInstanceData[7] = color[3] * greyFactor
+    modifyKnobInstanceData[8] = color[4] * greyFactor
+    knobVAO.instanceVBOOutline:Upload(modifyKnobInstanceData, -1, instance-1)
 end
 
 local function moveMiddleKnobs()
     -- TODO: read indexLeft and indexRight from somewhere (teamOrder??)
     local indexLeft = 1
     local indexRight = 2
-
-    --[[
-    local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
-    local valueRight = teamStats[metricIndex].aggregates[indexRight]
-
-    local barTop = top - metricDimensions.barPadding
-    local barBottom = bottom + metricDimensions.barPadding
-
-    local barLength = right - left - metricDimensions.knobWidth
-
-    local leftBarWidth
-    if valueLeft > 0 or valueRight > 0 then
-        leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
-    else
-        leftBarWidth = mathfloor(barLength / 2)
-    end
-    local rightBarWidth = barLength - leftBarWidth
-
-    local colorMiddleKnob
-    if valueLeft > valueRight then
-        colorMiddleKnob = allyTeamTable[indexLeft].colorKnobMiddle
-    elseif valueRight > valueLeft then
-        colorMiddleKnob = allyTeamTable[indexRight].colorKnobMiddle
-    else
-        -- color grey if even
-        colorMiddleKnob = colorKnobMiddleGrey
-    end
-
-    glColor(allyTeamTable[indexLeft].colorBar)
-    glRect(
-        left,
-        barBottom,
-        left + leftBarWidth,
-        barTop
-    )
-
-    glColor(allyTeamTable[indexRight].colorBar)
-    glRect(
-        right - rightBarWidth,
-        barBottom,
-        right,
-        barTop
-    )
-
-    local lineMiddle = mathfloor((top + bottom) / 2)
-    local lineBottom = lineMiddle - mathfloor(metricDimensions.lineHeight / 2)
-    local lineTop = lineMiddle + mathfloor(metricDimensions.lineHeight / 2)
-
-    glColor(allyTeamTable[indexLeft].colorLine)
-    glRect(
-        left,
-        lineBottom,
-        left + leftBarWidth,
-        lineTop
-    )
-
-    glColor(allyTeamTable[indexRight].colorLine)
-    glRect(
-        right - rightBarWidth,
-        lineBottom,
-        right,
-        lineTop
-    )
-
-    local relativeLead = 0
-    local relativeLeadMax = 999
-    local relativeLeadString = nil
-    if valueLeft > valueRight then
-        if valueRight > 0 then
-            relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
-        else
-            relativeLeadString = "∞"
-        end
-    elseif valueRight > valueLeft then
-        if valueLeft > 0 then
-            relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
-        else
-            relativeLeadString = "∞"
-        end
-    end
-    if relativeLead > relativeLeadMax then
-        relativeLeadString = string.format("%d+%%", relativeLeadMax)
-    elseif not relativeLeadString then
-        relativeLeadString = string.format("%d%%", relativeLead)
-    end
-
-    drawMetricKnob(
-        left + leftBarWidth + 1,
-        bottom,
-        right - rightBarWidth - 1,
-        top,
-        colorMiddleKnob,
-        relativeLeadString
-    )
-    ]]
 
     local left = widgetDimensions.left
     local right = widgetDimensions.right
