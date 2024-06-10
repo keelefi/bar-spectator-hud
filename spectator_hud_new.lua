@@ -41,6 +41,13 @@ local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
 local widgetDimensions = {}
 local metricDimensions = {}
 
+local textLeft
+local textRight
+local leftKnobLeft
+local leftKnobRight
+local rightKnobLeft
+local rightKnobRight
+
 local distanceFromTopBar
 local borderPadding
 
@@ -75,7 +82,6 @@ local knobFragmentShaderSource = [[
 #line 20000
 out vec4 FragColor;
 
-//uniform vec4 knobColor;
 in vec4 knobColor;
 
 #line 25000
@@ -838,6 +844,18 @@ local function scaleWidgetSize()
     metricDimensions.textPadding = mathfloor(defaults.metricTextPadding * scaleMultiplier)
     metricDimensions.textHeight = metricDimensions.height - 2 * borderPadding - 2 * metricDimensions.textPadding
     metricDimensions.textWidth = metricDimensions.textHeight * 2
+
+    widgetDimensions.right = viewScreenWidth
+    widgetDimensions.left = widgetDimensions.right - widgetDimensions.width
+
+    textLeft = widgetDimensions.left + borderPadding + metricDimensions.textPadding
+    textRight = textLeft + metricDimensions.textWidth
+
+    leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
+    leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
+
+    rightKnobRight = widgetDimensions.right - borderPadding - 2 * metricDimensions.textPadding
+    rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
 end
 
 local function setWidgetPosition()
@@ -849,14 +867,11 @@ local function setWidgetPosition()
         widgetDimensions.top = viewScreenHeight
     end
     widgetDimensions.bottom = widgetDimensions.top - widgetDimensions.height
-    widgetDimensions.right = viewScreenWidth
-    widgetDimensions.left = widgetDimensions.right - widgetDimensions.width
+    --widgetDimensions.right = viewScreenWidth
+    --widgetDimensions.left = widgetDimensions.right - widgetDimensions.width
 end
 
 local function updateMetricTextTooltips()
-    local textLeft = widgetDimensions.left + borderPadding + metricDimensions.textPadding
-    local textRight = textLeft + metricDimensions.textWidth
-
     if WG['tooltip'] then
         for metricIndex,metric in ipairs(metricsEnabled) do
             local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
@@ -1052,30 +1067,9 @@ local function updateStats()
     end
 end
 
-local function drawMetricKnobBackground(left, bottom, right, top, color)
-    local greyFactor = 0.5
-    local matchingGreyRed = color[1] * greyFactor
-    local matchingGreyGreen = color[2] * greyFactor
-    local matchingGreyBlue = color[3] * greyFactor
-    glColor(matchingGreyRed, matchingGreyGreen, matchingGreyBlue, 1)
-    rectRound(
-        left,
-        bottom,
-        right,
-        top,
-        metricDimensions.knobCornerSize
-    )
-    glColor(color)
-    rectRound(
-        left + metricDimensions.knobOutline,
-        bottom + metricDimensions.knobOutline,
-        right - metricDimensions.knobOutline,
-        top - metricDimensions.knobOutline,
-        metricDimensions.knobCornerSize
-    )
-end
-
 local function drawMetricKnobText(left, bottom, right, top, text)
+    -- note: call this function within a font:Begin() - font:End() block
+
     local knobTextAreaWidth = right - left - 2 * metricDimensions.knobOutline
     local fontSizeSmaller = fontSizeMetricKnob
     local textWidth = font:GetTextWidth(text)
@@ -1083,8 +1077,8 @@ local function drawMetricKnobText(left, bottom, right, top, text)
         fontSizeSmaller = fontSizeSmaller - 1
     end
 
-    font:Begin()
-        font:SetTextColor(textColorWhite)
+    --font:Begin()
+    --    font:SetTextColor(textColorWhite)
         font:Print(
             text,
             mathfloor((right + left) / 2),
@@ -1092,12 +1086,7 @@ local function drawMetricKnobText(left, bottom, right, top, text)
             fontSizeSmaller,
             'cvO'
         )
-    font:End()
-end
-
-local function drawMetricKnob(left, bottom, right, top, color, text)
-    drawMetricKnobBackground(left, bottom, right, top, color)
-    drawMetricKnobText(left, bottom, right, top, text)
+    --font:End()
 end
 
 local colorKnobMiddleGrey = { 0.5, 0.5, 0.5, 1 }
@@ -1163,189 +1152,51 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
         right,
         lineTop
     )
-
-    local relativeLead = 0
-    local relativeLeadMax = 999
-    local relativeLeadString = nil
-    if valueLeft > valueRight then
-        if valueRight > 0 then
-            relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
-        else
-            relativeLeadString = "∞"
-        end
-    elseif valueRight > valueLeft then
-        if valueLeft > 0 then
-            relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
-        else
-            relativeLeadString = "∞"
-        end
-    end
-    if relativeLead > relativeLeadMax then
-        relativeLeadString = string.format("%d+%%", relativeLeadMax)
-    elseif not relativeLeadString then
-        relativeLeadString = string.format("%d%%", relativeLead)
-    end
-    --drawMetricKnob(
-    --    left + leftBarWidth + 1,
-    --    bottom,
-    --    right - rightBarWidth - 1,
-    --    top,
-    --    colorMiddleKnob,
-    --    relativeLeadString
-    --)
-    drawMetricKnobText(
-        left + leftBarWidth + 1,
-        bottom,
-        right - rightBarWidth - 1,
-        top,
-        relativeLeadString
-    )
-
-    -- TODO: if mouseover, show individual stats for players
 end
 
-local function drawMetricText(textLeft, textBottom, textRight, textTop, metricIndex)
-    local textHCenter = mathfloor((textRight + textLeft) / 2)
-    local textVCenter = mathfloor((textTop + textBottom) / 2)
-    local textText = metricsEnabled[metricIndex].text
-
-    font:Begin()
-        font:SetTextColor(textColorWhite)
-        font:Print(
-            textText,
-            textHCenter,
-            textVCenter,
-            fontSizeMetricText,
-            'cvo'
-        )
-    font:End()
-end
-
-local function drawMetric(left, bottom, right, top, indexLeft, indexRight, metricIndex)
-    -- TODO: precalculate all the position values (they're static anyway)
-    -- ^ this will be done by display lists?
-
-    -- draw background
-    -- TODO: this uses too much memory :- /
-    -- TODO: see if using a display list will help with performance?
-    -- Note: background is drawn in DrawScreen()
-    --WG.FlowUI.Draw.Element(
-    --    left,
-    --    bottom,
-    --    right,
-    --    top,
-    --    1, 1, 1, 1,
-    --    1, 1, 1, 1
-    --)
-
-    -- draw text
-    local textLeft = left + borderPadding + metricDimensions.textPadding
-    local textRight = textLeft + metricDimensions.textWidth
-    local textBottom = bottom + borderPadding + metricDimensions.textPadding
-    local textTop = textBottom + metricDimensions.textHeight
-    --drawMetricText(textLeft, textBottom, textRight, textTop, metricIndex)
-
-    -- draw left knob
-    local leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
-    local leftKnobBottom = textBottom
-    local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-    local leftKnobTop = textTop
-    drawMetricKnobText(
-        leftKnobLeft,
-        leftKnobBottom,
-        leftKnobRight,
-        leftKnobTop,
-        formatResources(teamStats[metricIndex].aggregates[indexLeft], true)
-    )
-
-    -- draw right knob
-    local rightKnobRight = right - borderPadding - 2 * metricDimensions.textPadding
-    local rightKnobBottom = textBottom
-    local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-    local rightKnobTop = textTop
-    drawMetricKnobText(
-        rightKnobLeft,
-        rightKnobBottom,
-        rightKnobRight,
-        rightKnobTop,
-        formatResources(teamStats[metricIndex].aggregates[indexRight], true)
-    )
-
-    -- draw bar
-    -- currently, this function draws the two bars and middle knob
-    drawMetricBar(
-        leftKnobRight,
-        textBottom,
-        rightKnobLeft,
-        textTop,
-        indexLeft,
-        indexRight,
-        metricIndex
-    )
-
-    -- TODO: split drawing of middle knob out from drawMetricBar()
-end
-
-local function drawMetrics()
+local function drawBars()
     -- TODO: fetch indexLeft and indexRight (from teamOrder?)
     local indexLeft = 1
     local indexRight = 2
     for metricIndex,metric in ipairs(metricsEnabled) do
         local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
         local bottom = top - metricDimensions.height
-        local left = widgetDimensions.left
-        local right = widgetDimensions.right
-        drawMetric(left, bottom, right, top, indexLeft, indexRight, metricIndex)
+        local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        local textTop = textBottom + metricDimensions.textHeight
+        drawMetricBar(
+            leftKnobRight,
+            textBottom,
+            rightKnobLeft,
+            textTop,
+            indexLeft,
+            indexRight,
+            metricIndex
+        )
     end
 end
 
-local function createMetricDisplayLists()
-    metricDisplayLists = {}
-
-    -- TODO: read indexLeft and indexRight from somewhere (teamOrder??)
+local function drawText()
+    -- TODO: fetch indexLeft and indexRight (from teamOrder?)
     local indexLeft = 1
     local indexRight = 2
 
-    local left = widgetDimensions.left
-    local right = widgetDimensions.right
-    for metricIndex,metric in ipairs(metricsEnabled) do
-        local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
-        local top = bottom + metricDimensions.height
+    font:Begin()
+        font:SetTextColor(textColorWhite)
 
-        -- position of the text (e.g. M/s)
-        local textLeft = left + borderPadding + metricDimensions.textPadding
-        local textRight = textLeft + metricDimensions.textWidth
-        local textBottom = bottom + borderPadding + metricDimensions.textPadding
-        local textTop = textBottom + metricDimensions.textHeight
+        for metricIndex,metric in ipairs(metricsEnabled) do
+            local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
+            local bottom = top - metricDimensions.height
+            local left = widgetDimensions.left
+            local right = widgetDimensions.right
 
-        local textHCenter = mathfloor((textRight + textLeft) / 2)
-        local textVCenter = mathfloor((textTop + textBottom) / 2)
-        local textText = metricsEnabled[metricIndex].text
+            -- draw metric text, i.e. M/s etc
+            local textBottom = bottom + borderPadding + metricDimensions.textPadding
+            local textTop = textBottom + metricDimensions.textHeight
 
-        local leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
-        local leftKnobBottom = textBottom
-        local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-        local leftKnobTop = textTop
+            local textHCenter = mathfloor((textRight + textLeft) / 2)
+            local textVCenter = mathfloor((textTop + textBottom) / 2)
+            local textText = metricsEnabled[metricIndex].text
 
-        local rightKnobRight = right - borderPadding - 2 * metricDimensions.textPadding
-        local rightKnobBottom = textBottom
-        local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-        local rightKnobTop = textTop
-
-        local newDisplayList = gl.CreateList(function ()
-            -- background
-            WG.FlowUI.Draw.Element(
-                left,
-                bottom,
-                right,
-                top,
-                1, 1, 1, 1,
-                1, 1, 1, 1
-            )
-
-            -- add metric text
-            -- note: doing metric text in display list does not give any performance gain
-            font:SetTextColor(textColorWhite)
             font:Print(
                 textText,
                 textHCenter,
@@ -1354,23 +1205,88 @@ local function createMetricDisplayLists()
                 'cvo'
             )
 
-            -- draw left knob background
-            --drawMetricKnobBackground(
-            --    leftKnobLeft,
-            --    leftKnobBottom,
-            --    leftKnobRight,
-            --    leftKnobTop,
-            --    allyTeamTable[indexLeft].colorKnobSide
-            --)
+            local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
+            local valueRight = teamStats[metricIndex].aggregates[indexRight]
 
-            -- draw right knob background
-            --drawMetricKnobBackground(
-            --    rightKnobLeft,
-            --    rightKnobBottom,
-            --    rightKnobRight,
-            --    rightKnobTop,
-            --    allyTeamTable[indexRight].colorKnobSide
-            --)
+            -- draw left knob text
+            drawMetricKnobText(
+                leftKnobLeft,
+                textBottom,
+                leftKnobRight,
+                textTop,
+                formatResources(valueLeft, true)
+            )
+
+            -- draw right knob text
+            drawMetricKnobText(
+                rightKnobLeft,
+                textBottom,
+                rightKnobRight,
+                textTop,
+                formatResources(valueRight, true)
+            )
+
+            -- draw middle knob text
+            local barLength = rightKnobLeft - leftKnobRight - metricDimensions.knobWidth
+            local leftBarWidth
+            if valueLeft > 0 or valueRight > 0 then
+                leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
+            else
+                leftBarWidth = mathfloor(barLength / 2)
+            end
+            local rightBarWidth = barLength - leftBarWidth
+
+            local relativeLead = 0
+            local relativeLeadMax = 999
+            local relativeLeadString = nil
+            if valueLeft > valueRight then
+                if valueRight > 0 then
+                    relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
+                else
+                    relativeLeadString = "∞"
+                end
+            elseif valueRight > valueLeft then
+                if valueLeft > 0 then
+                    relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
+                else
+                    relativeLeadString = "∞"
+                end
+            end
+            if relativeLead > relativeLeadMax then
+                relativeLeadString = string.format("%d+%%", relativeLeadMax)
+            elseif not relativeLeadString then
+                relativeLeadString = string.format("%d%%", relativeLead)
+            end
+
+            drawMetricKnobText(
+                leftKnobRight + leftBarWidth + 1,
+                bottom,
+                rightKnobLeft - rightBarWidth - 1,
+                top,
+                relativeLeadString
+            )
+        end  -- for-loop
+    font:End()
+end
+
+local function createMetricDisplayLists()
+    metricDisplayLists = {}
+
+    local left = widgetDimensions.left
+    local right = widgetDimensions.right
+    for metricIndex,metric in ipairs(metricsEnabled) do
+        local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
+        local top = bottom + metricDimensions.height
+
+        local newDisplayList = gl.CreateList(function ()
+            WG.FlowUI.Draw.Element(
+                left,
+                bottom,
+                right,
+                top,
+                1, 1, 1, 1,
+                1, 1, 1, 1
+            )
         end)
         table.insert(metricDisplayLists, newDisplayList)
     end
@@ -1734,31 +1650,16 @@ local function addSideKnobs()
     local left = widgetDimensions.left
     local right = widgetDimensions.right
     for metricIndex,metric in ipairs(metricsEnabled) do
-        -- TODO: cleanup unused values
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
-        -- position of the text (e.g. M/s)
-        local textLeft = left + borderPadding + metricDimensions.textPadding
-        local textRight = textLeft + metricDimensions.textWidth
         local textBottom = bottom + borderPadding + metricDimensions.textPadding
-        local textTop = textBottom + metricDimensions.textHeight
-
-        local leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
-        local leftKnobBottom = textBottom
-        local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-        local leftKnobTop = textTop
-
-        local rightKnobRight = right - borderPadding - 2 * metricDimensions.textPadding
-        local rightKnobBottom = textBottom
-        local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-        local rightKnobTop = textTop
 
         local leftKnobColor = allyTeamTable[indexLeft].colorKnobSide
         local rightKnobColor = allyTeamTable[indexRight].colorKnobSide
 
-        addKnob(knobVAO, leftKnobLeft, leftKnobBottom, leftKnobColor)
-        addKnob(knobVAO, rightKnobLeft, rightKnobBottom, rightKnobColor)
+        addKnob(knobVAO, leftKnobLeft, textBottom, leftKnobColor)
+        addKnob(knobVAO, rightKnobLeft, textBottom, rightKnobColor)
     end
 end
 
@@ -1766,25 +1667,10 @@ local function addMiddleKnobs()
     local left = widgetDimensions.left
     local right = widgetDimensions.right
     for metricIndex,metric in ipairs(metricsEnabled) do
-        -- TODO: cleanup unused values
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
-        -- position of the text (e.g. M/s)
-        local textLeft = left + borderPadding + metricDimensions.textPadding
-        local textRight = textLeft + metricDimensions.textWidth
         local textBottom = bottom + borderPadding + metricDimensions.textPadding
-        local textTop = textBottom + metricDimensions.textHeight
-
-        local leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
-        local leftKnobBottom = textBottom
-        local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-        local leftKnobTop = textTop
-
-        local rightKnobRight = right - borderPadding - 2 * metricDimensions.textPadding
-        local rightKnobBottom = textBottom
-        local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-        local rightKnobTop = textTop
 
         local middleKnobLeft = (rightKnobLeft + leftKnobRight - metricDimensions.knobWidth) / 2
         local middleKnobBottom = textBottom
@@ -1797,7 +1683,6 @@ end
 
 local modifyKnobInstanceData = {0, 0, 0, 0, 0, 0, 0, 0}
 local function modifyKnob(knobVAO, instance, left, bottom, color)
-    -- TODO: test if this function works
     -- note: instead of using a local variable instanceData that rebuild a table every time this function is called,
     -- we use the global variable modifyKnobInstanceData to avoid recreating a table and instead reusing the table.
     --local instanceData = {}
@@ -1832,28 +1717,13 @@ local function moveMiddleKnobs()
     local right = widgetDimensions.right
     local instanceOffset = 2 * #metricsEnabled
     for metricIndex,metric in ipairs(metricsEnabled) do
-        -- TODO: cleanup unused values
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
         local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
         local valueRight = teamStats[metricIndex].aggregates[indexRight]
     
-        -- position of the text (e.g. M/s)
-        local textLeft = left + borderPadding + metricDimensions.textPadding
-        local textRight = textLeft + metricDimensions.textWidth
         local textBottom = bottom + borderPadding + metricDimensions.textPadding
-        local textTop = textBottom + metricDimensions.textHeight
-
-        local leftKnobLeft = textRight + borderPadding + 2 * metricDimensions.textPadding
-        local leftKnobBottom = textBottom
-        local leftKnobRight = leftKnobLeft + metricDimensions.knobWidth
-        local leftKnobTop = textTop
-
-        local rightKnobRight = right - borderPadding - 2 * metricDimensions.textPadding
-        local rightKnobBottom = textBottom
-        local rightKnobLeft = rightKnobRight - metricDimensions.knobWidth
-        local rightKnobTop = textTop
 
         local barLength = rightKnobLeft - leftKnobRight - metricDimensions.knobWidth
 
@@ -1863,7 +1733,6 @@ local function moveMiddleKnobs()
         else
             leftBarWidth = mathfloor(barLength / 2)
         end
-        --local rightBarWidth = barLength - leftBarWidth
 
         local middleKnobLeft = leftKnobRight + leftBarWidth + 1
         local middleKnobBottom = textBottom
@@ -1894,24 +1763,6 @@ end
 
 local function drawKnobVAO()
     shader:Activate()
-
-    --VAO:DrawElements(glEnum[, drawCount[, baseIndex[, instanceCount[, baseVertex[, baseInstance]]]]])
-    --Parameters:
-    --
-    --    glEnum number primitivesMode
-    --    drawCount number (optional)
-    --    baseIndex number (optional)
-    --    instanceCount number (optional)
-    --    baseVertex number (optional)
-    --    baseInstance number (optional)
-
-    --local metricCount = #metricsEnabled
-    --local knobsPerMetric = 2
-    --local trianglesPerKnob = 2
-    --local verticesPerTriangle = 3
-    --local instanceCount = metricCount * knobsPerMetric
-    --local drawCount = instanceCount * trianglesPerKnob * verticesPerTriangle
-    --knobVAO:DrawElements(GL.TRIANGLES, drawCount, 0, instanceCount)
 
     local amountOfTriangles = 5*2 + 4*knobVAO.cornerTriangleAmount
     knobVAO.vaoOutline:DrawElements(GL.TRIANGLES, amountOfTriangles*3, 0, knobVAO.instances)
@@ -1981,8 +1832,6 @@ function widget:Initialize()
     -- If no, we enable ecostats
     -- TODO: should enabling ecostats be an option?
     widgetEnabled = getAmountOfAllyTeams() == 2
-    Spring.Echo("amount of allyTeams: " .. tostring(getAmountOfAllyTeams()))
-    Spring.Echo("widgetEnabled: " .. tostring(widgetEnabled))
     if widgetEnabled then
         if widgetHandler:IsWidgetKnown("Ecostats") then
             widgetHandler:DisableWidget("Ecostats")
@@ -2103,9 +1952,10 @@ function widget:DrawScreen()
     for _, metricDisplayList in ipairs(metricDisplayLists) do
         gl.CallList(metricDisplayList)
     end
-    drawKnobVAO()
 
-    drawMetrics()
+    drawKnobVAO()
+    drawBars()
+    drawText()
 end
 
 function widget:GetConfigData()
