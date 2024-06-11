@@ -1881,6 +1881,51 @@ function widget:Shutdown()
     end
 end
 
+function widget:UnitFinished(unitID, unitDefID, unitTeam)
+    if not haveFullView then
+        return
+    end
+
+    if unitCache[unitTeam] then
+        addToUnitCache(unitTeam, unitID, unitDefID)
+    end
+end
+
+function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
+    if not haveFullView then
+        return
+    end
+
+    -- only track units that have been completely built
+    if Spring.GetUnitIsBeingBuilt(unitID) then
+        return
+    end
+
+    if unitCache[oldTeam] then
+        removeFromUnitCache(oldTeam, unitID, unitDefID)
+    end
+
+    if unitCache[newTeam] then
+        addToUnitCache(newTeam, unitID, unitDefID)
+    end
+end
+
+function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
+    if not haveFullView then
+        return
+    end
+
+    -- unit might've been a nanoframe
+    if Spring.GetUnitIsBeingBuilt(unitID) then
+        return
+    end
+
+    if unitCache[unitTeam] then
+        removeFromUnitCache(unitTeam, unitID, unitDefID)
+    end
+end
+
+
 function widget:ViewResize()
     rectRound = WG.FlowUI.Draw.RectRound
 
