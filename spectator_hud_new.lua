@@ -1797,9 +1797,11 @@ local function init()
     buildPlayerData()
     buildAllyTeamTable()
 
-    createKnobVAO()
-    addSideKnobs()
-    addMiddleKnobs()
+    if #metricsEnabled > 0 then
+        createKnobVAO()
+        addSideKnobs()
+        addMiddleKnobs()
+    end
 
     createMetricDisplayLists()
 
@@ -1953,7 +1955,9 @@ function widget:DrawScreen()
         gl.CallList(metricDisplayList)
     end
 
-    drawKnobVAO()
+    if knobVAO then
+        drawKnobVAO()
+    end
     drawBars()
     drawText()
 end
