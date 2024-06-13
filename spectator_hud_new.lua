@@ -1929,7 +1929,22 @@ function widget:ViewResize()
 end
 
 function widget:GameFrame(frameNum)
-    if (not widgetEnabled) or (not haveFullView) then
+    if not widgetEnabled then
+        return
+    end
+
+    local haveFullViewOld = haveFullView
+    haveFullView = select(2, Spring.GetSpectatingState())
+    if haveFullView ~= haveFullViewOld then
+        if haveFullView then
+            init()
+        else
+            deInit()
+            return
+        end
+    end
+
+    if not haveFullView then
         return
     end
 
@@ -1973,24 +1988,6 @@ function widget:GameFrame(frameNum)
         updateStats()
 
         moveMiddleKnobs()
-    end
-end
-
-function widget:Update(dt)
-    if not widgetEnabled then
-        return
-    end
-
-    local haveFullViewOld = haveFullView
-    haveFullView = select(2, Spring.GetSpectatingState())
-    if haveFullView ~= haveFullViewOld then
-        if haveFullView then
-            init()
-            return
-        else
-            deInit()
-            return
-        end
     end
 end
 
