@@ -1155,9 +1155,8 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
 end
 
 local function drawBars()
-    -- TODO: fetch indexLeft and indexRight (from teamOrder?)
-    local indexLeft = 1
-    local indexRight = 2
+    local indexLeft = teamOrder and teamOrder[1] or 1
+    local indexRight = teamOrder and teamOrder[2] or 2
     for metricIndex,metric in ipairs(metricsEnabled) do
         local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
         local bottom = top - metricDimensions.height
@@ -1176,9 +1175,8 @@ local function drawBars()
 end
 
 local function drawText()
-    -- TODO: fetch indexLeft and indexRight (from teamOrder?)
-    local indexLeft = 1
-    local indexRight = 2
+    local indexLeft = teamOrder and teamOrder[1] or 1
+    local indexRight = teamOrder and teamOrder[2] or 2
 
     font:Begin()
         font:SetTextColor(textColorWhite)
@@ -1643,9 +1641,8 @@ local function addKnob(knobVAO, left, bottom, color)
 end
 
 local function addSideKnobs()
-    -- TODO: read indexLeft and indexRight from somewhere (teamOrder??)
-    local indexLeft = 1
-    local indexRight = 2
+    local indexLeft = teamOrder and teamOrder[1] or 1
+    local indexRight = teamOrder and teamOrder[2] or 2
 
     local left = widgetDimensions.left
     local right = widgetDimensions.right
@@ -1709,9 +1706,8 @@ local function modifyKnob(knobVAO, instance, left, bottom, color)
 end
 
 local function moveMiddleKnobs()
-    -- TODO: read indexLeft and indexRight from somewhere (teamOrder??)
-    local indexLeft = 1
-    local indexRight = 2
+    local indexLeft = teamOrder and teamOrder[1] or 1
+    local indexRight = teamOrder and teamOrder[2] or 2
 
     local left = widgetDimensions.left
     local right = widgetDimensions.right
@@ -1960,10 +1956,17 @@ function widget:GameFrame(frameNum)
         end)
         teamOrder = {}
         for i,teamStartX in ipairs(teamStartXAverages) do
-            teamOrder[i] = teamStartX[1]
+            teamOrder[i] = teamStartX[1] + 1    -- note: allyTeam ID's start from 0
         end
 
-        -- TODO: update knob instance VBO with team color data
+        -- update knob colors
+        -- note: there's no way to modify the side knobs, so we just overwrite all
+        -- TODO: fix this hack by allowing modification of side knobs
+        if knobVAO.instances > 0 then
+            knobVAO.instances = 0
+        end
+        addSideKnobs()
+        addMiddleKnobs()
     end
 
     if frameNum % statsUpdateFrequency == 1 then
