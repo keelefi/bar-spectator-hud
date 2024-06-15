@@ -1966,9 +1966,7 @@ function widget:GameFrame(frameNum)
             teamOrder[i] = teamStartX[1] + 1    -- note: allyTeam ID's start from 0
         end
 
-        -- update knob colors
-        -- note: there's no way to modify the side knobs, so we just overwrite all
-        -- TODO: fix this hack by allowing modification of side knobs
+        -- update knob colors by overwriting all knobs
         if knobVAO.instances > 0 then
             knobVAO.instances = 0
         end
