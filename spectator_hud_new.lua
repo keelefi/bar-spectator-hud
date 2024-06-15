@@ -1340,9 +1340,6 @@ local function createKnobVertices(vertexMatrix, startIndex, left, bottom, right,
         vertexMatrix[startIndex+15] = 1
     end
 
-    -- TODO: add check for overflow
-    -- if cornerRadius is bigger than half of the knob width or height, the drawing will overlap
-
     local vertexIndex = startIndex
 
     local amountOfVertices = (cornerTriangleAmount+2)*4 + 5 * 4
