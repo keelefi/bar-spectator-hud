@@ -1296,7 +1296,7 @@ local function deleteMetricDisplayLists()
     end
 end
 
-local function createKnobVertices(vertexMatrix, startIndex, left, bottom, right, top, cornerRadius, cornerTriangleAmount)
+local function createKnobVertices(vertexMatrix, left, bottom, right, top, cornerRadius, cornerTriangleAmount)
     local function addCornerVertices(vertexMatrix, startIndex, startAngle, originX, originY, cornerRadiusX, cornerRadiusY)
         -- first, add the corner vertex
         vertexMatrix[startIndex] = originX --rectRight
@@ -1340,7 +1340,7 @@ local function createKnobVertices(vertexMatrix, startIndex, left, bottom, right,
         vertexMatrix[startIndex+15] = 1
     end
 
-    local vertexIndex = startIndex
+    local vertexIndex = 1
 
     local amountOfVertices = (cornerTriangleAmount+2)*4 + 5 * 4
     local amountOfTriangles = cornerTriangleAmount*4 + 5 * 2
@@ -1534,11 +1534,9 @@ local function createKnobVAO()
     knobVAO.cornerTriangleAmount = cornerTriangleAmount
 
     -- build vertexVBO
-    local vertexIndex = 1
     local vertexDataOutline = {}
-    vertexIndex = createKnobVertices(
+    createKnobVertices(
         vertexDataOutline,
-        vertexIndex,
         0,
         0,
         width,
@@ -1546,11 +1544,9 @@ local function createKnobVAO()
         cornerRadius,
         cornerTriangleAmount
     )
-    vertexIndex = 1
     local vertexDataInner = {}
-    vertexIndex = createKnobVertices(
+    createKnobVertices(
         vertexDataInner,
-        vertexIndex,
         border,
         border,
         width - border,
@@ -1559,7 +1555,6 @@ local function createKnobVAO()
         cornerTriangleAmount
     )
 
-    -- TODO: is #vertexData same as vertexIndex-1 ?
     local vertexVBOInner = gl.GetVBO(GL.ARRAY_BUFFER, false)
     vertexVBOInner:Define(#vertexDataInner/4, {
         { id = 0, name = "aPos", size = 4 },
