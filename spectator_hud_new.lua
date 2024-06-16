@@ -1800,9 +1800,11 @@ local function init()
 
     createTeamStats()
 
-    updateStats()
+    if haveFullView then
+        updateStats()
 
-    moveMiddleKnobs()
+        moveMiddleKnobs()
+    end
 end
 
 local function deInit()
