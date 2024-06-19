@@ -1058,7 +1058,7 @@ local function drawMetricKnobText(left, bottom, right, top, text)
 end
 
 local colorKnobMiddleGrey = { 0.5, 0.5, 0.5, 1 }
-local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, metricIndex)
+local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, metricIndex, mouseOver)
     local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
     local valueRight = teamStats[metricIndex].aggregates[indexRight]
 
@@ -1085,51 +1085,108 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
         colorMiddleKnob = colorKnobMiddleGrey
     end
 
-    glColor(allyTeamTable[indexLeft].colorBar)
-    glRect(
-        left,
-        barBottom,
-        left + leftBarWidth,
-        barTop
-    )
+    if (not mouseOver) or ((valueLeft == 0) and (valueRight == 0)) then
+        glColor(allyTeamTable[indexLeft].colorBar)
+        glRect(
+            left,
+            barBottom,
+            left + leftBarWidth,
+            barTop
+        )
 
-    glColor(allyTeamTable[indexRight].colorBar)
-    glRect(
-        right - rightBarWidth,
-        barBottom,
-        right,
-        barTop
-    )
+        glColor(allyTeamTable[indexRight].colorBar)
+        glRect(
+            right - rightBarWidth,
+            barBottom,
+            right,
+            barTop
+        )
 
-    local lineMiddle = mathfloor((top + bottom) / 2)
-    local lineBottom = lineMiddle - mathfloor(metricDimensions.lineHeight / 2)
-    local lineTop = lineMiddle + mathfloor(metricDimensions.lineHeight / 2)
+        local lineMiddle = mathfloor((top + bottom) / 2)
+        local lineBottom = lineMiddle - mathfloor(metricDimensions.lineHeight / 2)
+        local lineTop = lineMiddle + mathfloor(metricDimensions.lineHeight / 2)
 
-    glColor(allyTeamTable[indexLeft].colorLine)
-    glRect(
-        left,
-        lineBottom,
-        left + leftBarWidth,
-        lineTop
-    )
+        glColor(allyTeamTable[indexLeft].colorLine)
+        glRect(
+            left,
+            lineBottom,
+            left + leftBarWidth,
+            lineTop
+        )
 
-    glColor(allyTeamTable[indexRight].colorLine)
-    glRect(
-        right - rightBarWidth,
-        lineBottom,
-        right,
-        lineTop
-    )
+        glColor(allyTeamTable[indexRight].colorLine)
+        glRect(
+            right - rightBarWidth,
+            lineBottom,
+            right,
+            lineTop
+        )
+    else
+        -- do "rainbow" colors
+        local scalingFactor = barLength / (valueLeft + valueRight)
+
+        local lineStart
+        local lineEnd = left
+        for teamIndex,teamID in ipairs(allyTeamTable[indexLeft].teams) do
+            local teamValue = teamStats[metricIndex].allyTeams[indexLeft][teamIndex].average
+            local teamColor = playerData[teamID].color
+
+            lineStart = lineEnd
+            lineEnd = lineStart + mathfloor(scalingFactor * teamValue)
+
+            glColor(teamColor)
+            glRect(
+                lineStart,
+                barBottom,
+                lineEnd,
+                barTop
+            )
+        end
+
+        local lineStart
+        local lineEnd = right - rightBarWidth
+        for teamIndex,teamID in ipairs(allyTeamTable[indexRight].teams) do
+            local teamValue = teamStats[metricIndex].allyTeams[indexRight][teamIndex].average
+            local teamColor = playerData[teamID].color
+
+            lineStart = lineEnd
+            lineEnd = lineStart + mathfloor(scalingFactor * teamValue)
+
+            glColor(teamColor)
+            glRect(
+                lineStart,
+                barBottom,
+                lineEnd,
+                barTop
+            )
+        end
+    end
 end
 
 local function drawBars()
     local indexLeft = teamOrder and teamOrder[1] or 1
     local indexRight = teamOrder and teamOrder[2] or 2
+
+    local mouseX, mouseY = Spring.GetMouseState()
+    local mouseOnWidget = false
+    if (mouseX > widgetDimensions.left) and (mouseX < widgetDimensions.right) and
+        (mouseY > widgetDimensions.bottom) and (mouseY < widgetDimensions.top) then
+        mouseOnWidget = true
+    end
+
     for metricIndex,metric in ipairs(metricsEnabled) do
         local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
         local bottom = top - metricDimensions.height
         local textBottom = bottom + borderPadding + metricDimensions.textPadding
         local textTop = textBottom + metricDimensions.textHeight
+
+        local mouseOver = false
+        if mouseOnWidget then
+            if (mouseY > bottom) and (mouseY < top) then
+                mouseOver = true
+            end
+        end
+
         drawMetricBar(
             leftKnobRight,
             textBottom,
@@ -1137,7 +1194,8 @@ local function drawBars()
             textTop,
             indexLeft,
             indexRight,
-            metricIndex
+            metricIndex,
+            mouseOver
         )
     end
 end
