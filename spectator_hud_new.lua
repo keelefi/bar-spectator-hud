@@ -691,38 +691,6 @@ local function teamHasCommander(teamID)
 	return hasCom
 end
 
-local function buildPlayerData()
-    playerData = {}
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            local teamList = Spring.GetTeamList(allyID)
-            for _,teamID in ipairs(teamList) do
-                local playerName = nil
-                local playerID = Spring.GetPlayerList(teamID, false)
-                if playerID and playerID[1] then
-                    -- it's a player
-                    playerName = select(1, Spring.GetPlayerInfo(playerID[1], false))
-                else
-                    local aiName = Spring.GetGameRulesParam("ainame_" .. teamID)
-                    if aiName then
-                        -- it's AI
-                        playerName = aiName
-                    else
-                        -- player is gone
-                        playerName = "(gone)"
-                    end
-                end
-
-                playerData[teamID] = {}
-                playerData[teamID].name = playerName
-
-                local teamColor = { Spring.GetTeamColor(teamID) }
-                playerData[teamID].color = teamColor
-            end
-        end
-    end
-end
-
 local function buildAllyTeamTable()
     -- Data structure layout:
     -- allyTeamTable
