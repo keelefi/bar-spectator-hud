@@ -1967,7 +1967,6 @@ function widget:GameFrame(frameNum)
 
     if (frameNum > 0) and (not teamOrder) then
         -- collect player start positions
-        -- TODO: take camera angle into account
         local teamStartXAverages = {}
         for _, allyID in ipairs(Spring.GetAllyTeamList()) do
             if allyID ~= gaiaAllyID then
@@ -1982,9 +1981,16 @@ function widget:GameFrame(frameNum)
             end
         end
 
+        local _,rotY,_ = Spring.GetCameraRotation()
+        local flipped = rotY > math.pi / 2 and rotY <= 3 * math.pi/2
+
         -- sort averages and create team order (from left to right)
         table.sort(teamStartXAverages, function (left, right)
-            return left[2] < right[2]
+            if not flipped then
+                return left[2] < right[2]
+            else
+                return left[2] > right[2]
+            end
         end)
         teamOrder = {}
         for i,teamStartX in ipairs(teamStartXAverages) do
