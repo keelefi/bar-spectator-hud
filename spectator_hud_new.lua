@@ -1967,34 +1967,31 @@ function widget:GameFrame(frameNum)
 
     if (frameNum > 0) and (not teamOrder) then
         -- collect player start positions
-        local teamStartXAverages = {}
+        local teamStartAverages = {}
         for _, allyID in ipairs(Spring.GetAllyTeamList()) do
             if allyID ~= gaiaAllyID then
-                local xAccumulator = 0
+                local accumulator = { x = 0, z = 0 }
                 local teamList = Spring.GetTeamList(allyID)
                 for _,teamID in ipairs(teamList) do
-                    local x, _, _ = Spring.GetTeamStartPosition(teamID)
-                    xAccumulator = xAccumulator + x
+                    local x, _, z = Spring.GetTeamStartPosition(teamID)
+                    accumulator.x = accumulator.x + x
+                    accumulator.z = accumulator.z + z
                 end
-                local xAverage = xAccumulator / #teamList
-                table.insert(teamStartXAverages, { allyID, xAverage })
+                local startAverage= { x = accumulator.x / #teamList, z = accumulator.z / #teamList }
+                table.insert(teamStartAverages, { allyID, startAverage })
             end
         end
 
         local _,rotY,_ = Spring.GetCameraRotation()
-        local flipped = rotY > math.pi / 2 and rotY <= 3 * math.pi/2
 
         -- sort averages and create team order (from left to right)
-        table.sort(teamStartXAverages, function (left, right)
-            if not flipped then
-                return left[2] < right[2]
-            else
-                return left[2] > right[2]
-            end
+        table.sort(teamStartAverages, function (left, right)
+            return ((left[2].x * math.cos(rotY) + left[2].z * math.sin(rotY)) <
+                    (right[2].x * math.cos(rotY) + right[2].z * math.sin(rotY)))
         end)
         teamOrder = {}
-        for i,teamStartX in ipairs(teamStartXAverages) do
-            teamOrder[i] = teamStartX[1] + 1    -- note: allyTeam ID's start from 0
+        for i,teamStart in ipairs(teamStartAverages) do
+            teamOrder[i] = teamStart[1] + 1    -- note: allyTeam ID's start from 0
         end
 
         -- update knob colors by overwriting all knobs
