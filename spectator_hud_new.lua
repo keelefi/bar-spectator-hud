@@ -690,21 +690,6 @@ local function formatResources(amount, short)
     return addSpaces(round(amount))
 end
 
-local function teamHasCommander(teamID)
-    local hasCom = false
-	for commanderDefID, _ in pairs(unitDefsToTrack.commanderUnitDefs) do
-		if Spring.GetTeamUnitDefCount(teamID, commanderDefID) > 0 then
-			local unitList = Spring.GetTeamUnitsByDefs(teamID, commanderDefID)
-			for i = 1, #unitList do
-				if not Spring.GetUnitIsDead(unitList[i]) then
-					hasCom = true
-				end
-			end
-		end
-	end
-	return hasCom
-end
-
 local function buildAllyTeamTable()
     -- Data structure layout:
     -- allyTeamTable
