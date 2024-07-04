@@ -745,7 +745,6 @@ local function buildMetricsEnabled()
     metricsEnabled = {}
     local index = 1
     for _,metric in ipairs(metricsAvailable) do
-        local key = metric.key
         if config[metric.key] then
             local metricEnabled = table.copy(metric)
             metricEnabled.id = index
