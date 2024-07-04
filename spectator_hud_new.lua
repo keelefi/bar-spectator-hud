@@ -37,19 +37,23 @@ local rectRound
 local haveFullView = false
 
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
+local scaleMultiplier = nil
+
+--local distanceFromTopBar
+--local borderPadding
 
 local widgetDimensions = {}
 local metricDimensions = {}
+local titleDimensions = {}
+local knobDimensions = {}
+local barDimensions = {}
 
-local textLeft
-local textRight
-local leftKnobLeft
-local leftKnobRight
-local rightKnobLeft
-local rightKnobRight
-
-local distanceFromTopBar
-local borderPadding
+--local textLeft
+--local textRight
+--local leftKnobLeft
+--local leftKnobRight
+--local rightKnobLeft
+--local rightKnobRight
 
 local textColorWhite = { 1, 1, 1, 1 }
 
@@ -109,24 +113,65 @@ local constants = {
     darkerMiddleKnobFactor = 0.75,
 
     darkerDecal = 0.8,
+
+    --titleHeightToWidthFactor = 1.5,
+    titleDimensions = {
+        heightToWidthFactor = 1.5,
+    },
+
+    knobDimensions = {
+        heightToWidthFactor = 2,
+    },
 }
 
 local defaults = {
-    metricHeight = 70, -- TODO: is this a good value?
+    --metricHeight = 70, -- TODO: is this a good value?
 
-    fontSizeMetricText = 64 * 1.2 * 0.5,    -- TODO: come up with more sensible values?
-    fontSizeMetricKnob = 32,
+    --fontSizeMetricText = 64 * 1.2 * 0.5,    -- TODO: come up with more sensible values?
+    --fontSizeMetricKnob = 32,
 
-    distanceFromTopBar = 10,
+    --distanceFromTopBar = 10,
 
-    borderPadding = 5,
+    --borderPadding = 5,
 
-    metricTextPadding = 6,
-    metricKnobCornerSize = 8,
-    metricKnobOutline = 4,
-    metricBarPadding = 8,
-    metricLineHeight = 12,
-    metricKnobPadding = 6,
+    --metricTextPadding = 6,
+    --metricKnobCornerSize = 8,
+    --metricKnobOutline = 4,
+    --metricBarPadding = 8,
+    --metricLineHeight = 12,
+    --metricKnobPadding = 6,
+
+    widgetDimensions = {
+        width = 768,
+        -- height is determined by metric height and amount of metrics
+
+        borderPadding = 5,
+        distanceFromTopBar = 10,
+    },
+
+    metricDimensions = {
+        height = 70,
+        -- width is same as widget width
+    },
+
+    titleDimensions = {
+        fontSize = 40,
+
+        padding = 6,
+    },
+
+    knobDimensions = {
+        fontSize = 32,
+
+        cornerSize = 8,
+        outline = 4,
+        padding = 8,
+    },
+
+    barDimensions = {
+        padding = 12,
+        lineHeight = 8,
+    },
 }
 
 local metricKeys = {
@@ -767,17 +812,100 @@ local function buildMetricsEnabled()
     end
 end
 
-local function getAmountOfMetricsEnabled()
-    local totalMetricsAvailable = 0
-    for _,metric in ipairs(metricsEnabled) do
-        if metric then
-            totalMetricsAvailable = totalMetricsAvailable + 1
-        end
+local function getWidgetHeightMax()
+    -- TODO: check that we don't overlap with advplayerlist
+    return viewScreenHeight / 2
+end
+
+local function calculateWidgetDimensions()
+    scaleMultiplier = ui_scale * config.widgetScale * viewScreenWidth / 3840
+
+    widgetDimensions.height = math.min(
+        math.floor(defaults.metricDimensions.height * #metricsEnabled * scaleMultiplier),
+        getWidgetHeightMax())
+
+    scaleMultiplier = widgetDimensions.height / (defaults.metricDimensions.height * #metricsEnabled)
+
+    widgetDimensions.width = math.floor(defaults.widgetDimensions.width * scaleMultiplier)
+
+    widgetDimensions.borderPadding = mathfloor(defaults.widgetDimensions.borderPadding * scaleMultiplier)
+
+    widgetDimensions.right = viewScreenWidth
+    widgetDimensions.left = viewScreenWidth - widgetDimensions.width
+
+    widgetDimensions.distanceFromTopBar = mathfloor(defaults.widgetDimensions.distanceFromTopBar * scaleMultiplier)
+    if WG['topbar'] then
+        local topBarPosition = WG['topbar'].GetPosition()
+        widgetDimensions.top = topBarPosition[2] - widgetDimensions.distanceFromTopBar
+    else
+        widgetDimensions.top = viewScreenHeight
     end
-    return totalMetricsAvailable
+    widgetDimensions.bottom = widgetDimensions.top - widgetDimensions.height
+end
+
+local function calculateMetricDimensions()
+    metricDimensions.height = widgetDimensions.height / #metricsEnabled
+    metricDimensions.width = widgetDimensions.width
+end
+
+local function calculateTitleDimensions()
+    titleDimensions.fontSize = math.floor(defaults.titleDimensions.fontSize * scaleMultiplier)
+    titleDimensions.padding = math.floor(defaults.titleDimensions.padding * scaleMultiplier)
+
+    --titleDimensions.height = metricDimensions.height - 2 * widgetDimensions.borderPadding - 2 * titleDimensions.padding
+    titleDimensions.height = metricDimensions.height
+    titleDimensions.width = math.floor(titleDimensions.height * constants.titleDimensions.heightToWidthFactor)
+
+    titleDimensions.left = widgetDimensions.left + widgetDimensions.borderPadding + titleDimensions.padding
+    titleDimensions.right = titleDimensions.left + titleDimensions.width
+
+    titleDimensions.horizontalCenter = math.floor((titleDimensions.right + titleDimensions.left) / 2)
+    titleDimensions.verticalCenterOffset = math.floor(titleDimensions.height / 2)
+end
+
+local function calculateKnobDimensions()
+    knobDimensions.fontSize = math.floor(defaults.knobDimensions.fontSize * scaleMultiplier)
+    knobDimensions.padding = math.floor(defaults.knobDimensions.padding * scaleMultiplier)
+
+    --knobDimensions.height = metricDimensions.height - 2 * widgetDimensions.borderPadding - 2 * knobDimensions.padding
+    knobDimensions.height = metricDimensions.height - 2 * knobDimensions.padding
+    knobDimensions.width = knobDimensions.height * constants.knobDimensions.heightToWidthFactor
+
+    knobDimensions.cornerSize = math.floor(defaults.knobDimensions.cornerSize * scaleMultiplier)
+    knobDimensions.outline = math.floor(defaults.knobDimensions.outline * scaleMultiplier)
+
+    knobDimensions.leftKnobLeft = titleDimensions.right + knobDimensions.padding
+    knobDimensions.leftKnobRight = knobDimensions.leftKnobLeft + knobDimensions.width
+
+    knobDimensions.rightKnobRight = widgetDimensions.right - widgetDimensions.borderPadding - knobDimensions.padding
+    knobDimensions.rightKnobLeft = knobDimensions.rightKnobRight - knobDimensions.width
+end
+
+local function calculateBarDimensions()
+    barDimensions.padding = math.floor(defaults.barDimensions.padding * scaleMultiplier)
+    barDimensions.paddingFromMetric = knobDimensions.padding + barDimensions.padding
+
+    local barHeight = knobDimensions.height - 2 * barDimensions.padding
+    local lineHeight = defaults.barDimensions.lineHeight * scaleMultiplier
+    barDimensions.lineMiddleOffset = math.floor((barHeight - lineHeight) / 2)
+
+    barDimensions.left = knobDimensions.leftKnobRight + 1
+    barDimensions.right = knobDimensions.rightKnobLeft - 1
+
+    barDimensions.width = barDimensions.right - barDimensions.left - knobDimensions.width
+end
+
+local function calculateDimensions()
+    calculateWidgetDimensions()
+    calculateMetricDimensions()
+    calculateTitleDimensions()
+    calculateKnobDimensions()
+    calculateBarDimensions()
 end
 
 local function scaleWidgetSize()
+    -- TODO: remove this function
+
     -- what we need:
     --  - metric bar dimensions
     --  - widget total size
@@ -789,7 +917,7 @@ local function scaleWidgetSize()
     local scaleMultiplier = ui_scale * config.widgetScale * viewScreenWidth / 3840
 
     metricDimensions.height = mathfloor(defaults.metricHeight * scaleMultiplier)
-    widgetDimensions.height = metricDimensions.height * getAmountOfMetricsEnabled()
+    widgetDimensions.height = metricDimensions.height * #metricsEnabled
 
     -- fontSize = mathfloor(defaults.fontSize * scaleMultiplier)
     fontSizeMetricText = mathfloor(defaults.fontSizeMetricText * scaleMultiplier)
@@ -827,6 +955,8 @@ local function scaleWidgetSize()
 end
 
 local function setWidgetPosition()
+    -- TODO: remove this function
+
     -- widget is placed underneath topbar
     if WG['topbar'] then
         local topBarPosition = WG['topbar'].GetPosition()
@@ -845,12 +975,17 @@ local function updateMetricTextTooltips()
             local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
             local top = bottom + metricDimensions.height
 
-            local textBottom = bottom + borderPadding + metricDimensions.textPadding
-            local textTop = textBottom + metricDimensions.textHeight
+            ----local textBottom = bottom + borderPadding + metricDimensions.textPadding
+            --local textBottom = bottom + titleDimensions.padding
+            ----local textTop = textBottom + metricDimensions.textHeight
+            --local textTop = textBottom + titleDimensions.height
+            local left = titleDimensions.left
+            local right = titleDimensions.right
 
             WG['tooltip'].AddTooltip(
                 string.format("spectator_hud_vsmode_%d", metric.id),
-                { textLeft, textBottom, textRight, textTop },
+                --{ textLeft, textBottom, textRight, textTop },
+                { left, bottom, right, top },
                 metric.tooltip,
                 nil,
                 metric.title
@@ -1038,8 +1173,10 @@ end
 local function drawMetricKnobText(left, bottom, right, top, text)
     -- note: call this function within a font:Begin() - font:End() block
 
-    local knobTextAreaWidth = right - left - 2 * metricDimensions.knobOutline
-    local fontSizeSmaller = fontSizeMetricKnob
+    --local knobTextAreaWidth = right - left - 2 * metricDimensions.knobOutline
+    local knobTextAreaWidth = right - left - 2 * knobDimensions.outline
+    --local fontSizeSmaller = fontSizeMetricKnob
+    local fontSizeSmaller = knobDimensions.fontSize
     local textWidth = font:GetTextWidth(text)
     while textWidth * fontSizeSmaller > knobTextAreaWidth do
         fontSizeSmaller = fontSizeSmaller - 1
@@ -1062,10 +1199,13 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
     local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
     local valueRight = teamStats[metricIndex].aggregates[indexRight]
 
-    local barTop = top - metricDimensions.barPadding
-    local barBottom = bottom + metricDimensions.barPadding
+    --local barTop = top - metricDimensions.barPadding
+    local barTop = top - barDimensions.paddingFromMetric
+    --local barBottom = bottom + metricDimensions.barPadding
+    local barBottom = bottom + barDimensions.paddingFromMetric
 
-    local barLength = right - left - metricDimensions.knobWidth
+    --local barLength = right - left - metricDimensions.knobWidth
+    local barLength = barDimensions.width
 
     local leftBarWidth
     if valueLeft > 0 or valueRight > 0 then
@@ -1075,15 +1215,15 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
     end
     local rightBarWidth = barLength - leftBarWidth
 
-    local colorMiddleKnob
-    if valueLeft > valueRight then
-        colorMiddleKnob = allyTeamTable[indexLeft].colorKnobMiddle
-    elseif valueRight > valueLeft then
-        colorMiddleKnob = allyTeamTable[indexRight].colorKnobMiddle
-    else
-        -- color grey if even
-        colorMiddleKnob = colorKnobMiddleGrey
-    end
+    --local colorMiddleKnob
+    --if valueLeft > valueRight then
+    --    colorMiddleKnob = allyTeamTable[indexLeft].colorKnobMiddle
+    --elseif valueRight > valueLeft then
+    --    colorMiddleKnob = allyTeamTable[indexRight].colorKnobMiddle
+    --else
+    --    -- color grey if even
+    --    colorMiddleKnob = colorKnobMiddleGrey
+    --end
 
     if (not mouseOver) or ((valueLeft == 0) and (valueRight == 0)) then
         glColor(allyTeamTable[indexLeft].colorBar)
@@ -1102,9 +1242,15 @@ local function drawMetricBar(left, bottom, right, top, indexLeft, indexRight, me
             barTop
         )
 
-        local lineMiddle = mathfloor((top + bottom) / 2)
-        local lineBottom = lineMiddle - mathfloor(metricDimensions.lineHeight / 2)
-        local lineTop = lineMiddle + mathfloor(metricDimensions.lineHeight / 2)
+        -- TODO: fix the fact that we always divide by 2
+        --local lineMiddle = mathfloor((top + bottom) / 2)
+        ----local lineBottom = lineMiddle - mathfloor(metricDimensions.lineHeight / 2)
+        --local lineBottom = lineMiddle - mathfloor(barDimensions.lineHeight / 2)
+        ----local lineTop = lineMiddle + mathfloor(metricDimensions.lineHeight / 2)
+        --local lineTop = lineMiddle + mathfloor(barDimensions.lineHeight / 2)
+
+        local lineBottom = barBottom + barDimensions.lineMiddleOffset
+        local lineTop = barTop - barDimensions.lineMiddleOffset
 
         glColor(allyTeamTable[indexLeft].colorLine)
         glRect(
@@ -1168,30 +1314,44 @@ local function drawBars()
     local indexRight = teamOrder and teamOrder[2] or 2
 
     local mouseX, mouseY = Spring.GetMouseState()
-    local mouseOnWidget = false
-    if (mouseX > widgetDimensions.left) and (mouseX < widgetDimensions.right) and
+    --local mouseOnWidget = false
+    --if (mouseX > widgetDimensions.left) and (mouseX < widgetDimensions.right) and
+    --    (mouseY > widgetDimensions.bottom) and (mouseY < widgetDimensions.top) then
+    --    mouseOnWidget = true
+    --end
+    local mouseOnBar= false
+    if (mouseX > barDimensions.left) and (mouseX < barDimensions.right) and
         (mouseY > widgetDimensions.bottom) and (mouseY < widgetDimensions.top) then
-        mouseOnWidget = true
+        mouseOnBar = true
     end
 
     for metricIndex,metric in ipairs(metricsEnabled) do
-        local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
-        local bottom = top - metricDimensions.height
-        local textBottom = bottom + borderPadding + metricDimensions.textPadding
-        local textTop = textBottom + metricDimensions.textHeight
+        --local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
+        --local bottom = top - metricDimensions.height
+        --local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        --local textTop = textBottom + metricDimensions.textHeight
+
+        local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
+        local top = bottom + metricDimensions.height
+
+        ----local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        --local textBottom = bottom + titleDimensions.padding
+        ----local textTop = textBottom + metricDimensions.textHeight
+        --local textTop = textBottom + titleDimensions.height
 
         local mouseOver = false
-        if mouseOnWidget then
+        --if mouseOnWidget then
+        if mouseOnBar then
             if (mouseY > bottom) and (mouseY < top) then
                 mouseOver = true
             end
         end
 
         drawMetricBar(
-            leftKnobRight,
-            textBottom,
-            rightKnobLeft,
-            textTop,
+            knobDimensions.leftKnobRight,
+            bottom,
+            knobDimensions.rightKnobLeft,
+            top,
             indexLeft,
             indexRight,
             metricIndex,
@@ -1208,24 +1368,37 @@ local function drawText()
         font:SetTextColor(textColorWhite)
 
         for metricIndex,metric in ipairs(metricsEnabled) do
-            local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
-            local bottom = top - metricDimensions.height
+            --local top = widgetDimensions.top - (metricIndex - 1) * metricDimensions.height
+            --local bottom = top - metricDimensions.height
+            --local left = widgetDimensions.left
+            --local right = widgetDimensions.right
+            local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
+            local top = bottom + metricDimensions.height
             local left = widgetDimensions.left
             local right = widgetDimensions.right
 
             -- draw metric text, i.e. M/s etc
-            local textBottom = bottom + borderPadding + metricDimensions.textPadding
-            local textTop = textBottom + metricDimensions.textHeight
+            ----local textBottom = bottom + borderPadding + metricDimensions.textPadding
+            --local textBottom = bottom + titleDimensions.padding
+            ----local textTop = textBottom + metricDimensions.textHeight
+            --local textTop = textBottom + titleDimensions.fontSize
 
-            local textHCenter = mathfloor((textRight + textLeft) / 2)
-            local textVCenter = mathfloor((textTop + textBottom) / 2)
+            ----local textHCenter = mathfloor((textRight + textLeft) / 2)
+            ---- TODO: pre-calculate horizontal center of title
+            --local textHCenter = mathfloor((titleDimensions.right + titleDimensions.left) / 2)
+            ----local textVCenter = mathfloor((textTop + textBottom) / 2)
+            --local textVCenter = mathfloor((top + bottom) / 2)
+            --local textText = metricsEnabled[metricIndex].text
+
+            local textHCenter = titleDimensions.horizontalCenter
+            local textVCenter = bottom + titleDimensions.verticalCenterOffset
             local textText = metricsEnabled[metricIndex].text
 
             font:Print(
                 textText,
                 textHCenter,
                 textVCenter,
-                fontSizeMetricText,
+                titleDimensions.fontSize,
                 'cvo'
             )
 
@@ -1234,24 +1407,24 @@ local function drawText()
 
             -- draw left knob text
             drawMetricKnobText(
-                leftKnobLeft,
-                textBottom,
-                leftKnobRight,
-                textTop,
+                knobDimensions.leftKnobLeft,
+                bottom,
+                knobDimensions.leftKnobRight,
+                top,
                 formatResources(valueLeft, true)
             )
 
             -- draw right knob text
             drawMetricKnobText(
-                rightKnobLeft,
-                textBottom,
-                rightKnobRight,
-                textTop,
+                knobDimensions.rightKnobLeft,
+                bottom,
+                knobDimensions.rightKnobRight,
+                top,
                 formatResources(valueRight, true)
             )
 
             -- draw middle knob text
-            local barLength = rightKnobLeft - leftKnobRight - metricDimensions.knobWidth
+            local barLength = knobDimensions.rightKnobLeft - knobDimensions.leftKnobRight - knobDimensions.width
             local leftBarWidth
             if valueLeft > 0 or valueRight > 0 then
                 leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
@@ -1283,9 +1456,9 @@ local function drawText()
             end
 
             drawMetricKnobText(
-                leftKnobRight + leftBarWidth + 1,
+                knobDimensions.leftKnobRight + leftBarWidth + 1,
                 bottom,
-                rightKnobLeft - rightBarWidth - 1,
+                knobDimensions.rightKnobLeft - rightBarWidth - 1,
                 top,
                 relativeLeadString
             )
@@ -1544,10 +1717,14 @@ end
 local function createKnobVAO()
     local instanceCount = #metricsEnabled * 3
     local cornerTriangleAmount = 6
-    local width = metricDimensions.knobWidth
-    local height = metricDimensions.knobHeight
-    local cornerRadius = metricDimensions.knobCornerSize
-    local border = metricDimensions.knobOutline
+    --local width = metricDimensions.knobWidth
+    --local height = metricDimensions.knobHeight
+    --local cornerRadius = metricDimensions.knobCornerSize
+    --local border = metricDimensions.knobOutline
+    local width = knobDimensions.width
+    local height = knobDimensions.height
+    local cornerRadius = knobDimensions.cornerSize
+    local border = knobDimensions.outline
 
     if knobVAO then
         knobVAO.vaoInner:Delete()
@@ -1668,13 +1845,16 @@ local function addSideKnobs()
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
-        local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        ----local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        --local textBottom = bottom + titleDimensions.padding
+        local knobBottom = bottom + knobDimensions.padding
+        --local knobTop = top - knobDimensions.padding
 
         local leftKnobColor = allyTeamTable[indexLeft].colorKnobSide
         local rightKnobColor = allyTeamTable[indexRight].colorKnobSide
 
-        addKnob(knobVAO, leftKnobLeft, textBottom, leftKnobColor)
-        addKnob(knobVAO, rightKnobLeft, textBottom, rightKnobColor)
+        addKnob(knobVAO, knobDimensions.leftKnobLeft, knobBottom, leftKnobColor)
+        addKnob(knobVAO, knobDimensions.rightKnobLeft, knobBottom, rightKnobColor)
     end
 end
 
@@ -1685,9 +1865,11 @@ local function addMiddleKnobs()
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
-        local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        --local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        local textBottom = bottom + titleDimensions.padding
 
-        local middleKnobLeft = (rightKnobLeft + leftKnobRight - metricDimensions.knobWidth) / 2
+        --local middleKnobLeft = (rightKnobLeft + leftKnobRight - metricDimensions.knobWidth) / 2
+        local middleKnobLeft = (knobDimensions.rightKnobLeft + knobDimensions.leftKnobRight) / 2 - knobDimensions.width
         local middleKnobBottom = textBottom
 
         local middleKnobColor = colorKnobMiddleGrey
@@ -1732,14 +1914,17 @@ local function moveMiddleKnobs()
     local instanceOffset = 2 * #metricsEnabled
     for metricIndex,metric in ipairs(metricsEnabled) do
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
-        local top = bottom + metricDimensions.height
+        --local top = bottom + metricDimensions.height
 
         local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
         local valueRight = teamStats[metricIndex].aggregates[indexRight]
     
-        local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        ----local textBottom = bottom + borderPadding + metricDimensions.textPadding
+        --local textBottom = bottom + titleDimensions.padding
+        local knobBottom = bottom + knobDimensions.padding
 
-        local barLength = rightKnobLeft - leftKnobRight - metricDimensions.knobWidth
+        --local barLength = rightKnobLeft - leftKnobRight - metricDimensions.knobWidth
+        local barLength = barDimensions.width
 
         local leftBarWidth
         if valueLeft > 0 or valueRight > 0 then
@@ -1748,8 +1933,7 @@ local function moveMiddleKnobs()
             leftBarWidth = mathfloor(barLength / 2)
         end
 
-        local middleKnobLeft = leftKnobRight + leftBarWidth + 1
-        local middleKnobBottom = textBottom
+        local middleKnobLeft = knobDimensions.leftKnobRight + leftBarWidth + 1
 
         local middleKnobColor
         if valueLeft > valueRight then
@@ -1763,7 +1947,7 @@ local function moveMiddleKnobs()
 
         local instanceID = instanceOffset + metricIndex
 
-        modifyKnob(knobVAO, instanceID, middleKnobLeft, middleKnobBottom, middleKnobColor)
+        modifyKnob(knobVAO, instanceID, middleKnobLeft, knobBottom, middleKnobColor)
     end
 end
 
@@ -1805,8 +1989,11 @@ local function init()
 
     buildMetricsEnabled()
 
-    scaleWidgetSize()
-    setWidgetPosition()
+    -- TODO: remove these
+    --scaleWidgetSize()
+    --setWidgetPosition()
+
+    calculateDimensions()
 
     buildPlayerData()
     buildAllyTeamTable()
