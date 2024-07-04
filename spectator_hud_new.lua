@@ -1852,7 +1852,6 @@ local function init()
 end
 
 local function deInit()
-    -- TODO: what do we need to cleanup?
     deleteMetricDisplayLists()
     deleteKnobVAO()
 end
