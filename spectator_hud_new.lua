@@ -1332,22 +1332,22 @@ local function createKnobVertices(vertexMatrix, left, bottom, right, top, corner
     local function addRectangleVertices(vertexMatrix, startIndex, rectLeft, rectBottom, rectRight, rectTop)
         vertexMatrix[startIndex] = rectLeft
         vertexMatrix[startIndex+1] = rectTop
-        vertexMatrix[startIndex+2] = 0 
+        vertexMatrix[startIndex+2] = 0
         vertexMatrix[startIndex+3] = 1
 
         vertexMatrix[startIndex+4] = rectRight
         vertexMatrix[startIndex+5] = rectTop
-        vertexMatrix[startIndex+6] = 0 
+        vertexMatrix[startIndex+6] = 0
         vertexMatrix[startIndex+7] = 1
 
         vertexMatrix[startIndex+8] = rectLeft
         vertexMatrix[startIndex+9] = rectBottom
-        vertexMatrix[startIndex+10] = 0 
+        vertexMatrix[startIndex+10] = 0
         vertexMatrix[startIndex+11] = 1
 
         vertexMatrix[startIndex+12] = rectRight
         vertexMatrix[startIndex+13] = rectBottom
-        vertexMatrix[startIndex+14] = 0 
+        vertexMatrix[startIndex+14] = 0
         vertexMatrix[startIndex+15] = 1
     end
 
