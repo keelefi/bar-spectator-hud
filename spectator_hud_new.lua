@@ -1004,7 +1004,7 @@ local function createTeamStats()
 
     teamStats = {}
 
-    for metricIndex,metric in ipairs(metricsEnabled) do
+    for metricIndex,_ in ipairs(metricsEnabled) do
         teamStats[metricIndex] = {}
         teamStats[metricIndex].aggregates = {}
         teamStats[metricIndex].allyTeams = {}
@@ -1283,7 +1283,7 @@ local function createMetricDisplayLists()
 
     local left = widgetDimensions.left
     local right = widgetDimensions.right
-    for metricIndex,metric in ipairs(metricsEnabled) do
+    for metricIndex,_ in ipairs(metricsEnabled) do
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
         local top = bottom + metricDimensions.height
 
