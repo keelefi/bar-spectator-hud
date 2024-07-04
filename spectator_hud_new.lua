@@ -32,8 +32,6 @@ local statsUpdateFrequency = 2        -- every 2nd frame
 
 local widgetEnabled = nil
 
-local rectRound
-
 local haveFullView = false
 
 local ui_scale = tonumber(Spring.GetConfigFloat("ui_scale", 1) or 1)
@@ -1893,8 +1891,6 @@ function widget:Initialize()
         WG['options'].addOptions(table.map(OPTION_SPECS, createOptionFromSpec))
     end
 
-    rectRound = WG.FlowUI.Draw.RectRound
-
     checkAndUpdateHaveFullView()
 
     font = WG['fonts'].getFont()
@@ -1960,8 +1956,6 @@ end
 
 
 function widget:ViewResize()
-    rectRound = WG.FlowUI.Draw.RectRound
-
     reInit()
 end
 
