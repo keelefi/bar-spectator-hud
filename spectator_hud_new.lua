@@ -1638,12 +1638,8 @@ local function addSideKnobs()
     local indexLeft = teamOrder and teamOrder[1] or 1
     local indexRight = teamOrder and teamOrder[2] or 2
 
-    local left = widgetDimensions.left
-    local right = widgetDimensions.right
-    for metricIndex,metric in ipairs(metricsEnabled) do
+    for metricIndex,_ in ipairs(metricsEnabled) do
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
-        local top = bottom + metricDimensions.height
-
         local knobBottom = bottom + knobDimensions.padding
 
         local leftKnobColor = allyTeamTable[indexLeft].colorKnobSide
@@ -1655,12 +1651,8 @@ local function addSideKnobs()
 end
 
 local function addMiddleKnobs()
-    local left = widgetDimensions.left
-    local right = widgetDimensions.right
-    for metricIndex,metric in ipairs(metricsEnabled) do
+    for metricIndex,_ in ipairs(metricsEnabled) do
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
-        local top = bottom + metricDimensions.height
-
         local textBottom = bottom + titleDimensions.padding
 
         local middleKnobLeft = (knobDimensions.rightKnobLeft + knobDimensions.leftKnobRight) / 2 - knobDimensions.width
@@ -1703,15 +1695,13 @@ local function moveMiddleKnobs()
     local indexLeft = teamOrder and teamOrder[1] or 1
     local indexRight = teamOrder and teamOrder[2] or 2
 
-    local left = widgetDimensions.left
-    local right = widgetDimensions.right
     local instanceOffset = 2 * #metricsEnabled
-    for metricIndex,metric in ipairs(metricsEnabled) do
+    for metricIndex,_ in ipairs(metricsEnabled) do
         local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
 
         local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
         local valueRight = teamStats[metricIndex].aggregates[indexRight]
-    
+
         local knobBottom = bottom + knobDimensions.padding
 
         local barLength = barDimensions.width
