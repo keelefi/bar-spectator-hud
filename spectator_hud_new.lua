@@ -921,11 +921,6 @@ local function getOneStat(statKey, teamID)
         end
     elseif statKey == metricKeys.energyIncome then
         result = select(4, Spring.GetTeamResources(teamID, "energy")) or 0
-    elseif statKey == "reclaimEnergyIncome" then
-        for unitID,unitPassive in pairs(unitCache[teamID].reclaimerUnits) do
-            result = result + unitCache.reclaimerUnits.update(unitID, unitPassive)[2]
-        end
-        result = mathmax(0, result)
     elseif statKey == metricKeys.buildPower then
         result = cachedTotals[teamID].buildPower
     elseif statKey == metricKeys.metalProduced then
