@@ -1353,9 +1353,6 @@ local function createKnobVertices(vertexMatrix, left, bottom, right, top, corner
 
     local vertexIndex = 1
 
-    local amountOfVertices = (cornerTriangleAmount+2)*4 + 5 * 4
-    local amountOfTriangles = cornerTriangleAmount*4 + 5 * 2
-
     local cornerRadiusX = coordinateScreenXToOpenGL(cornerRadius) + 1.0
     local cornerRadiusY = coordinateScreenYToOpenGL(cornerRadius) + 1.0
 
@@ -1363,10 +1360,6 @@ local function createKnobVertices(vertexMatrix, left, bottom, right, top, corner
     local bottomOpenGL = coordinateScreenYToOpenGL(bottom)
     local rightOpenGL = coordinateScreenXToOpenGL(right)
     local topOpenGL = coordinateScreenYToOpenGL(top)
-
-    local alpha = math.pi / 2 / cornerTriangleAmount
-    local b = cornerRadius * math.cos(alpha)
-    local a = cornerRadius * math.sin(alpha)
 
     -- 1. create top-left corner triangles
     addCornerVertices(
