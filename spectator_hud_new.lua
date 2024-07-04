@@ -11,7 +11,42 @@ function widget:GetInfo()
     }
 end
 
--- TODO: Describe the widget (for on-boarding programmers)
+--[[
+Spectator HUD is a widget that displays various game metrics. It is only enabled in spectator mode and only works when
+spectating a game between two allyTeams (excluding Gaia). The widget is drawn at the top-right corner of the screen.
+
+Each metric is displayed on it's own row. Each metric row has to the left a shorthand text representation of the metric
+such as "M/s" for metal income. Then, each row has a metric bar.
+
+The metric bar is split in two, one for each allyTeam. In the middle of the bar is a "knob" that moves according to
+the balance of the metric. For example, if the balance of a metric is 2:1, then the the team at the left will have a
+bar twice as long the team to the right. Furthermore, on the sides of the metric bars are two more "knobs" that
+contain a text value display of the metric amounts.
+
+ ---------------------------------------------------------------------------------
+|  -------     -------                          -------                   ------  |
+| |  M/s  |   |   12  |------------------------|   4   |-----------------|   8  | |
+|  -------     -------                          -------                   ------  |
+ ---------------------------------------------------------------------------------
+
+Above is an ASCII art depiction of how a single metric display is rendered.
+
+All geometry variables are calculated during widget initialization. In the render pass during DrawScreen() geometry
+variables are mainly accessed, not computed. Especially horizontal values can be pre-calculated as they're same for all
+metrics. The exception to this are the metric bars themselves as they are dynamic in size and depend on statistics from
+the game in progress.
+
+The geometry information is stored in global tables that are named like {something}Dimensions, e.g. widgetDimensions.
+All geometry is resized according to both the game overall "ui_scale" and widget-specific option widgetScale.
+
+The enabled metrics are configurable options. The table metricsAvailable contain all metrics. During widget
+initialization, the table metricsEnabled is populated with the enabled metrics.
+
+The global variable statsUpdateFrequency indicates how often the statistics are updated.
+
+Note that the widget can be soft reset. Events causing a soft reset include changing widget size, changing enabled
+metrics or changing from spectating view to player view.
+]]
 
 local viewScreenWidth
 local viewScreenHeight
