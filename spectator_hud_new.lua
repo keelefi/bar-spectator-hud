@@ -741,17 +741,6 @@ local function getAmountOfAllyTeams()
     return amountOfAllyTeams
 end
 
-local function getAmountOfTeams()
-    local amountOfTeams = 0
-    for _, allyID in ipairs(Spring.GetAllyTeamList()) do
-        if allyID ~= gaiaAllyID then
-            local teamList = Spring.GetTeamList(allyID)
-            amountOfTeams = amountOfTeams + #teamList
-        end
-    end
-    return amountOfTeams
-end
-
 local function buildMetricsEnabled()
     metricsEnabled = {}
     index = 1
