@@ -743,7 +743,7 @@ end
 
 local function buildMetricsEnabled()
     metricsEnabled = {}
-    index = 1
+    local index = 1
     for _,metric in ipairs(metricsAvailable) do
         local key = metric.key
         if config[metric.key] then
