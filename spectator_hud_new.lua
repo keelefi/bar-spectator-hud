@@ -270,8 +270,6 @@ local teamOrder = nil
 
 local teamStats = nil
 
-local statsToDraw = nil
-
 local function getOptionId(optionSpec)
     return "spectator_hud_new__" .. optionSpec.configVariable
 end
