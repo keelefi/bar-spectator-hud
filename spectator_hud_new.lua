@@ -1037,9 +1037,7 @@ end
 local function drawMetricKnobText(left, bottom, right, top, text)
     -- note: call this function within a font:Begin() - font:End() block
 
-    --local knobTextAreaWidth = right - left - 2 * metricDimensions.knobOutline
     local knobTextAreaWidth = right - left - 2 * knobDimensions.outline
-    --local fontSizeSmaller = fontSizeMetricKnob
     local fontSizeSmaller = knobDimensions.fontSize
     local textWidth = font:GetTextWidth(text)
     while textWidth * fontSizeSmaller > knobTextAreaWidth do
