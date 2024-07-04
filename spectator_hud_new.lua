@@ -1195,11 +1195,9 @@ local function drawText()
     font:Begin()
         font:SetTextColor(textColorWhite)
 
-        for metricIndex,metric in ipairs(metricsEnabled) do
+        for metricIndex,_ in ipairs(metricsEnabled) do
             local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
             local top = bottom + metricDimensions.height
-            local left = widgetDimensions.left
-            local right = widgetDimensions.right
 
             -- draw metric text, i.e. M/s etc
             local textHCenter = titleDimensions.horizontalCenter
