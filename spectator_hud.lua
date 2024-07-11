@@ -85,6 +85,11 @@ local metricDisplayLists = {}
 
 local shader = nil
 
+local regenerateTextTextures = true
+local titleTexture = nil
+local titleTextureDone = false
+local statsTexture = nil
+
 local knobVertexShaderSource = [[
 #version 420
 #line 10000
@@ -240,6 +245,8 @@ local config = {
 
     widgetScale = 0.8,
 
+    useRenderToTexture = true,
+
     -- TODO: reconsider the default values
     metalIncome = true,
     energyConversionMetalIncome = false,
@@ -283,6 +290,12 @@ local OPTION_SPECS = {
         min = 4,
         max = 32,
         step = 4,
+    },
+    {
+        configVariable = "useRenderToTexture",
+        name = "Use RenderToTexture For Text",
+        description = "Optimize text drawing by drawing text into a texture.",
+        type = "bool",
     },
 
     -- Note: There are more settings created dynamically from metricsAvailable (see below)
@@ -845,6 +858,8 @@ local function calculateTitleDimensions()
 
     titleDimensions.horizontalCenter = math.floor((titleDimensions.right + titleDimensions.left) / 2)
     titleDimensions.verticalCenterOffset = math.floor(titleDimensions.height / 2)
+
+    titleDimensions.widthHalf = math.floor(titleDimensions.width / 2)
 end
 
 local function calculateKnobDimensions()
@@ -884,6 +899,43 @@ local function calculateDimensions()
     calculateTitleDimensions()
     calculateKnobDimensions()
     calculateBarDimensions()
+end
+
+local function createTextures()
+    if not config.useRenderToTexture then
+        return
+    end
+
+    local textureProperties = {
+        target = GL.TEXTURE_2D,
+        format = GL.RGBA,
+        fbo = true,
+    }
+
+    local titleTextureSizeX = titleDimensions.width
+    local titleTextureSizeY = widgetDimensions.height
+    titleTexture = gl.CreateTexture(titleTextureSizeX, titleTextureSizeY, textureProperties)
+    titleTextureDone = false
+
+    local knobTextureSizeX = knobDimensions.rightKnobRight - knobDimensions.leftKnobLeft
+    local knobTextureSizeY = widgetDimensions.height
+    statsTexture = gl.CreateTexture(knobTextureSizeX, knobTextureSizeY, textureProperties)
+end
+
+local function deleteTextures()
+    if not config.useRenderToTexture then
+        return
+    end
+
+    if titleTexture then
+        gl.DeleteTexture(titleTexture)
+        titleTexture = nil
+    end
+
+    if statsTexture then
+        gl.DeleteTexture(statsTexture)
+        statsTexture = nil
+    end
 end
 
 local function updateMetricTextTooltips()
@@ -1075,6 +1127,12 @@ local function updateStats()
             teamStats[metricIndex].aggregates[allyIndex] = teamAggregate
         end
     end
+
+    if not config.useRenderToTexture then
+        return
+    end
+
+    regenerateTextTextures = true
 end
 
 local function drawMetricKnobText(left, bottom, right, top, text)
@@ -1233,88 +1291,274 @@ local function drawText()
     local indexLeft = teamOrder and teamOrder[1] or 1
     local indexRight = teamOrder and teamOrder[2] or 2
 
-    font:Begin()
-        font:SetTextColor(textColorWhite)
+    if config.useRenderToTexture then
+        gl.Color(textColorWhite)
+        gl.Texture(titleTexture)
+        gl.TexRect(
+            titleDimensions.left,
+            widgetDimensions.bottom,
+            titleDimensions.right,
+            widgetDimensions.top,
+            false,
+            true
+        )
+        gl.Texture(false)
 
-        for metricIndex,_ in ipairs(metricsEnabled) do
-            local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
-            local top = bottom + metricDimensions.height
+        gl.Texture(statsTexture)
+        gl.TexRect(
+            knobDimensions.leftKnobLeft,
+            widgetDimensions.bottom,
+            knobDimensions.rightKnobRight,
+            widgetDimensions.top,
+            false,
+            true
+        )
+        gl.Texture(false)
+    else
+        font:Begin()
+            font:SetTextColor(textColorWhite)
 
-            -- draw metric text, i.e. M/s etc
-            local textHCenter = titleDimensions.horizontalCenter
-            local textVCenter = bottom + titleDimensions.verticalCenterOffset
-            local textText = metricsEnabled[metricIndex].text
+            for metricIndex,_ in ipairs(metricsEnabled) do
+                local bottom = widgetDimensions.top - metricIndex * metricDimensions.height
+                local top = bottom + metricDimensions.height
+
+                -- draw metric text, i.e. M/s etc
+                local textHCenter = titleDimensions.horizontalCenter
+                local textVCenter = bottom + titleDimensions.verticalCenterOffset
+                local textText = metricsEnabled[metricIndex].text
+
+                font:Print(
+                    textText,
+                    textHCenter,
+                    textVCenter,
+                    titleDimensions.fontSize,
+                    'cvo'
+                )
+
+                local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
+                local valueRight = teamStats[metricIndex].aggregates[indexRight]
+
+                -- draw left knob text
+                drawMetricKnobText(
+                    knobDimensions.leftKnobLeft,
+                    bottom,
+                    knobDimensions.leftKnobRight,
+                    top,
+                    formatResources(valueLeft, true)
+                )
+
+                -- draw right knob text
+                drawMetricKnobText(
+                    knobDimensions.rightKnobLeft,
+                    bottom,
+                    knobDimensions.rightKnobRight,
+                    top,
+                    formatResources(valueRight, true)
+                )
+
+                -- draw middle knob text
+                local barLength = knobDimensions.rightKnobLeft - knobDimensions.leftKnobRight - knobDimensions.width
+                local leftBarWidth
+                if valueLeft > 0 or valueRight > 0 then
+                    leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
+                else
+                    leftBarWidth = mathfloor(barLength / 2)
+                end
+                local rightBarWidth = barLength - leftBarWidth
+
+                local relativeLead = 0
+                local relativeLeadMax = 999
+                local relativeLeadString = nil
+                if valueLeft > valueRight then
+                    if valueRight > 0 then
+                        relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
+                    else
+                        relativeLeadString = "∞"
+                    end
+                elseif valueRight > valueLeft then
+                    if valueLeft > 0 then
+                        relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
+                    else
+                        relativeLeadString = "∞"
+                    end
+                end
+                if relativeLead > relativeLeadMax then
+                    relativeLeadString = string.format("%d+%%", relativeLeadMax)
+                elseif not relativeLeadString then
+                    relativeLeadString = string.format("%d%%", relativeLead)
+                end
+
+                drawMetricKnobText(
+                    knobDimensions.leftKnobRight + leftBarWidth + 1,
+                    bottom,
+                    knobDimensions.rightKnobLeft - rightBarWidth - 1,
+                    top,
+                    relativeLeadString
+                )
+            end  -- for-loop
+        font:End()
+    end
+end
+
+local function doTitleTexture()
+    local function drawTitlesToTexture()
+        -- This may be unnecessary, but without initializing the texture like this I've seen some weird fragments that
+        -- look like the texture would have old drawings.
+        gl.Blending(GL.ONE, GL.ZERO)
+        gl.Color(1, 1, 1, 0.0)
+        gl.Rect(-titleDimensions.width, -widgetDimensions.height, titleDimensions.width, widgetDimensions.height)
+
+        gl.PushMatrix()
+        gl.Translate(-1, -1, 0)
+        gl.Scale(
+            2 / titleDimensions.width,
+            2 / widgetDimensions.height,
+            0
+        )
+        font:Begin()
+            font:SetTextColor(textColorWhite)
+
+            for metricIndex,metric in ipairs(metricsEnabled) do
+                local bottom = widgetDimensions.height - metricIndex * metricDimensions.height
+
+                local textHCenter = titleDimensions.widthHalf
+                local textVCenter = bottom + titleDimensions.verticalCenterOffset
+                local textText = metricsEnabled[metricIndex].text
+
+                font:Print(
+                    textText,
+                    textHCenter,
+                    textVCenter,
+                    titleDimensions.fontSize,
+                    'cvo'
+                )
+            end
+        font:End()
+        gl.PopMatrix()
+    end
+
+    gl.RenderToTexture(titleTexture, drawTitlesToTexture)
+end
+
+local function updateStatsTexture()
+    local function drawStatsToTexture()
+        local function drawMetricKnobText(left, bottom, right, top, text)
+            local knobTextAreaWidth = right - left - 2 * knobDimensions.outline
+            local fontSizeSmaller = knobDimensions.fontSize
+            local textWidth = font:GetTextWidth(text)
+            while textWidth * fontSizeSmaller > knobTextAreaWidth do
+                fontSizeSmaller = fontSizeSmaller - 1
+            end
 
             font:Print(
-                textText,
-                textHCenter,
-                textVCenter,
-                titleDimensions.fontSize,
-                'cvo'
+                text,
+                mathfloor((right + left) / 2),
+                mathfloor((top + bottom) / 2),
+                fontSizeSmaller,
+                'cvO'
             )
+        end
 
-            local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
-            local valueRight = teamStats[metricIndex].aggregates[indexRight]
+        local statsTextureWidth = knobDimensions.rightKnobRight - knobDimensions.leftKnobLeft
+        local statsTextureHeight = widgetDimensions.height
 
-            -- draw left knob text
-            drawMetricKnobText(
-                knobDimensions.leftKnobLeft,
-                bottom,
-                knobDimensions.leftKnobRight,
-                top,
-                formatResources(valueLeft, true)
-            )
+        -- Remove everything we drew previously
+        gl.Blending(GL.ONE, GL.ZERO)
+        gl.Color(1, 1, 1, 0.0)
+        gl.Rect(-statsTextureWidth, -statsTextureHeight, statsTextureWidth, statsTextureHeight)
 
-            -- draw right knob text
-            drawMetricKnobText(
-                knobDimensions.rightKnobLeft,
-                bottom,
-                knobDimensions.rightKnobRight,
-                top,
-                formatResources(valueRight, true)
-            )
+        gl.PushMatrix()
+        gl.Translate(-1, -1, 0)
+        gl.Scale(
+            2 / statsTextureWidth,
+            2 / statsTextureHeight,
+            0
+        )
+        font:Begin()
+            font:SetTextColor(textColorWhite)
 
-            -- draw middle knob text
-            local barLength = knobDimensions.rightKnobLeft - knobDimensions.leftKnobRight - knobDimensions.width
-            local leftBarWidth
-            if valueLeft > 0 or valueRight > 0 then
-                leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
-            else
-                leftBarWidth = mathfloor(barLength / 2)
-            end
-            local rightBarWidth = barLength - leftBarWidth
+            local indexLeft = teamOrder and teamOrder[1] or 1
+            local indexRight = teamOrder and teamOrder[2] or 2
+            for metricIndex,metric in ipairs(metricsEnabled) do
+                local bottom = widgetDimensions.height - metricIndex * metricDimensions.height
+                local top = bottom + metricDimensions.height
 
-            local relativeLead = 0
-            local relativeLeadMax = 999
-            local relativeLeadString = nil
-            if valueLeft > valueRight then
-                if valueRight > 0 then
-                    relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
+                local valueLeft = teamStats[metricIndex].aggregates[indexLeft]
+                local valueRight = teamStats[metricIndex].aggregates[indexRight]
+
+                -- draw left knob text
+                drawMetricKnobText(
+                    0,
+                    bottom,
+                    knobDimensions.width,
+                    top,
+                    formatResources(valueLeft, true)
+                )
+
+                -- draw right knob text
+                drawMetricKnobText(
+                    knobDimensions.rightKnobLeft - knobDimensions.leftKnobLeft,
+                    bottom,
+                    knobDimensions.rightKnobRight - knobDimensions.leftKnobLeft,
+                    top,
+                    formatResources(valueRight, true)
+                )
+
+                -- draw middle knob text
+                local barLength = knobDimensions.rightKnobLeft - knobDimensions.leftKnobRight - knobDimensions.width
+                local leftBarWidth
+                if valueLeft > 0 or valueRight > 0 then
+                    leftBarWidth = mathfloor(barLength * valueLeft / (valueLeft + valueRight))
                 else
-                    relativeLeadString = "∞"
+                    leftBarWidth = mathfloor(barLength / 2)
                 end
-            elseif valueRight > valueLeft then
-                if valueLeft > 0 then
-                    relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
-                else
-                    relativeLeadString = "∞"
-                end
-            end
-            if relativeLead > relativeLeadMax then
-                relativeLeadString = string.format("%d+%%", relativeLeadMax)
-            elseif not relativeLeadString then
-                relativeLeadString = string.format("%d%%", relativeLead)
-            end
+                local rightBarWidth = barLength - leftBarWidth -- TODO: remove unused variable
 
-            drawMetricKnobText(
-                knobDimensions.leftKnobRight + leftBarWidth + 1,
-                bottom,
-                knobDimensions.rightKnobLeft - rightBarWidth - 1,
-                top,
-                relativeLeadString
-            )
-        end  -- for-loop
-    font:End()
+                local relativeLead = 0
+                local relativeLeadMax = 999
+                local relativeLeadString = nil
+                if valueLeft > valueRight then
+                    if valueRight > 0 then
+                        relativeLead = mathfloor(100 * mathabs(valueLeft - valueRight) / valueRight)
+                    else
+                        relativeLeadString = "∞"
+                    end
+                elseif valueRight > valueLeft then
+                    if valueLeft > 0 then
+                        relativeLead = mathfloor(100 * mathabs(valueRight - valueLeft) / valueLeft)
+                    else
+                        relativeLeadString = "∞"
+                    end
+                end
+                if relativeLead > relativeLeadMax then
+                    relativeLeadString = string.format("%d+%%", relativeLeadMax)
+                elseif not relativeLeadString then
+                    relativeLeadString = string.format("%d%%", relativeLead)
+                end
+
+                local middleKnobLeft = knobDimensions.width + leftBarWidth + 1
+                drawMetricKnobText(
+                    middleKnobLeft,
+                    bottom,
+                    middleKnobLeft + knobDimensions.width,
+                    top,
+                    relativeLeadString
+                )
+            end
+        font:End()
+        gl.PopMatrix()
+    end
+
+    gl.RenderToTexture(statsTexture, drawStatsToTexture)
+end
+
+local function updateTextTextures()
+    if not titleTextureDone then
+        doTitleTexture()
+        titleTextureDone = true
+    end
+
+    updateStatsTexture()
 end
 
 local function createMetricDisplayLists()
@@ -1811,6 +2055,7 @@ local function init()
     buildMetricsEnabled()
 
     calculateDimensions()
+    createTextures()
 
     buildPlayerData()
     buildAllyTeamTable()
@@ -1840,6 +2085,7 @@ end
 local function deInit()
     deleteMetricDisplayLists()
     deleteKnobVAO()
+    deleteTextures()
 end
 
 reInit = function ()
@@ -2018,6 +2264,16 @@ function widget:Update(dt)
     end
 end
 
+function widget:DrawGenesis()
+    if not config.useRenderToTexture then
+        return
+    end
+
+    if regenerateTextTextures then
+        updateTextTextures()
+        regenerateTextTextures = false
+    end
+end
 
 function widget:DrawScreen()
     if (not widgetEnabled) or (not haveFullView) then
