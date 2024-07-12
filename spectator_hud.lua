@@ -2248,9 +2248,13 @@ function widget:GameFrame(frameNum)
     end
 
     if frameNum % statsUpdateFrequency == 1 then
+        if tracy then tracy.ZoneBeginN("Spectator HUD:updateStats") end
         updateStats()
+        if tracy then tracy.ZoneEnd() end
 
+        if tracy then tracy.ZoneBeginN("Spectator HUD:moveMiddleKnobs") end
         moveMiddleKnobs()
+        if tracy then tracy.ZoneEnd() end
     end
 end
 
@@ -2274,8 +2278,10 @@ function widget:DrawGenesis()
     end
 
     if regenerateTextTextures then
+        if tracy then tracy.ZoneBeginN("Spectator HUD:updateTextTextures") end
         updateTextTextures()
         regenerateTextTextures = false
+        if tracy then tracy.ZoneEnd() end
     end
 end
 
@@ -2284,15 +2290,25 @@ function widget:DrawScreen()
         return
     end
 
+    if tracy then tracy.ZoneBeginN("Spectator HUD:metricDisplayLists") end
     for _, metricDisplayList in ipairs(metricDisplayLists) do
         gl.CallList(metricDisplayList)
     end
+    if tracy then tracy.ZoneEnd() end
 
+    if tracy then tracy.ZoneBeginN("Spectator HUD:drawKnobVAO") end
     if knobVAO then
         drawKnobVAO()
     end
+    if tracy then tracy.ZoneEnd() end
+
+    if tracy then tracy.ZoneBeginN("Spectator HUD:drawBars") end
     drawBars()
+    if tracy then tracy.ZoneEnd() end
+
+    if tracy then tracy.ZoneBeginN("Spectator HUD:drawText") end
     drawText()
+    if tracy then tracy.ZoneEnd() end
 end
 
 function widget:GetConfigData()
