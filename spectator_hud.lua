@@ -2265,6 +2265,10 @@ function widget:Update(dt)
 end
 
 function widget:DrawGenesis()
+    if (not widgetEnabled) or (not haveFullView) then
+        return
+    end
+
     if not config.useRenderToTexture then
         return
     end
